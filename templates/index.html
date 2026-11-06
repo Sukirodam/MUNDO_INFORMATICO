@@ -1,0 +1,1218 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MUNDO INFORMÁTICO | Tecnología</title>
+    <meta name="description" content="Descubre laptops, periféricos, componentes y accesorios tecnológicos en MUNDO INFORMÁTICO.">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --fondo: #0b1020;
+            --panel: #111a30;
+            --panel-claro: #17233d;
+            --borde: #293957;
+            --azul: #55c8ff;
+            --azul-boton: #1689df;
+            --texto: #f4f7ff;
+            --texto-secundario: #b7c3d9;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: var(--fondo);
+            color: var(--texto);
+        }
+
+        a {
+            color: inherit;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px 6%;
+            background: var(--panel);
+            border-bottom: 1px solid var(--borde);
+        }
+
+        .logo {
+            color: var(--azul);
+            font-size: 21px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        nav a {
+            text-decoration: none;
+            transition: color .2s;
+        }
+
+        nav a:hover {
+            color: var(--azul);
+        }
+
+        .menu {
+            position: relative;
+        }
+
+        .menu-principal {
+            display: inline-block;
+            padding: 8px 0;
+        }
+
+        .menu-opciones {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            min-width: 190px;
+            padding: 10px;
+            background: var(--panel-claro);
+            border: 1px solid var(--borde);
+            border-radius: 10px;
+            z-index: 10;
+            box-shadow: 0 10px 25px #0005;
+        }
+
+        .menu:hover .menu-opciones,
+        .menu:focus-within .menu-opciones {
+            display: grid;
+            gap: 4px;
+        }
+
+        .menu-opciones a {
+            display: block;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .menu-opciones a:hover {
+            background: #243553;
+        }
+
+        .enlace-admin {
+            color: #55c8ff;
+            font-weight: bold;
+            padding: 9px 12px;
+            border: 1px solid #1689df;
+            border-radius: 8px;
+            background: #1689df20;
+        }
+
+        .enlace-admin:hover {
+            background: #1689df;
+            color: white;
+        }
+
+        .hero {
+            padding: 65px 6%;
+            text-align: center;
+            background: linear-gradient(130deg, #111a30, #25245c);
+        }
+
+        .hero h1 {
+            margin: 0 0 18px;
+            font-size: clamp(30px, 5vw, 52px);
+        }
+
+        .hero h1 span {
+            color: var(--azul);
+        }
+
+        .hero p {
+            color: #c6d0e2;
+            line-height: 1.7;
+        }
+
+        .busqueda {
+            display: flex;
+            max-width: 600px;
+            margin: 28px auto 0;
+            gap: 10px;
+        }
+
+        .busqueda input {
+            flex: 1;
+            min-width: 0;
+            padding: 14px;
+            border: 1px solid #344968;
+            border-radius: 8px;
+            outline: none;
+            background: var(--fondo);
+            color: white;
+            font-size: 15px;
+        }
+
+        .busqueda input:focus {
+            border-color: var(--azul);
+        }
+
+        button,
+        .boton {
+            display: inline-block;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            background: var(--azul-boton);
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background .2s, transform .2s;
+        }
+
+        button:hover,
+        .boton:hover {
+            background: #35adff;
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background: #48556c;
+            color: #b7c3d9;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        main {
+            padding: 40px 6%;
+        }
+
+        .titulo-catalogo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .titulo-catalogo h2 {
+            margin: 0;
+            font-size: 27px;
+        }
+
+        .contador {
+            color: var(--texto-secundario);
+            font-size: 14px;
+        }
+
+        .catalogo {
+            display: grid;
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(min(100%, 230px), 1fr)
+            );
+            gap: 22px;
+            margin-top: 28px;
+        }
+
+        .producto {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            overflow: hidden;
+            border: 1px solid var(--borde);
+            border-radius: 14px;
+            background: var(--panel);
+            transition: transform .2s, border-color .2s;
+        }
+
+        .producto:hover {
+            transform: translateY(-5px);
+            border-color: var(--azul);
+        }
+
+        .producto-imagen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 190px;
+            overflow: hidden;
+            background: #18233b;
+        }
+
+        .producto-imagen img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .producto-info {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 18px;
+        }
+
+        .categoria {
+            color: var(--azul);
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .producto h3 {
+            margin: 12px 0 8px;
+            font-size: 19px;
+            line-height: 1.4;
+        }
+
+        .descripcion {
+            flex: 1;
+            margin: 0 0 15px;
+            color: var(--texto-secundario);
+            font-size: 14px;
+            line-height: 1.6;
+            overflow-wrap: anywhere;
+        }
+
+        .precio {
+            margin: 0 0 10px;
+            color: var(--azul);
+            font-size: 23px;
+            font-weight: bold;
+        }
+
+        .existencia {
+            margin: 0;
+            color: var(--texto-secundario);
+            font-size: 13px;
+        }
+
+        .disponible {
+            color: #80e6a0;
+        }
+
+        .agotado {
+            color: #ff9999;
+        }
+
+        .form-carrito {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .boton-carrito {
+            width: 100%;
+        }
+
+        .vacio {
+            margin-top: 28px;
+            padding: 45px 20px;
+            border: 1px solid var(--borde);
+            border-radius: 14px;
+            background: var(--panel);
+            text-align: center;
+        }
+
+        .vacio h3 {
+            margin-top: 0;
+        }
+
+        .vacio p {
+            margin-bottom: 24px;
+            color: var(--texto-secundario);
+        }
+
+        .mensajes {
+            padding: 10px 6%;
+            background: #111a30;
+            border-bottom: 1px solid var(--borde);
+        }
+
+        .mensaje {
+            margin: 5px 0;
+            color: #80e6a0;
+            font-size: 14px;
+        }
+
+        .nosotros {
+            padding: 45px 6%;
+            background: var(--panel);
+            text-align: center;
+        }
+
+        .nosotros p {
+            max-width: 650px;
+            margin: 15px auto 0;
+            color: var(--texto-secundario);
+            line-height: 1.8;
+        }
+
+        footer {
+            padding: 25px 6%;
+            border-top: 1px solid var(--borde);
+            color: #9baac4;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        /* ==========================================
+           CHATBOT MUNDO INFORMÁTICO
+        ========================================== */
+
+        #chatbot-boton {
+            position: fixed;
+            right: 25px;
+            bottom: 25px;
+            z-index: 1000;
+            width: 65px;
+            height: 65px;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 27px;
+            box-shadow: 0 5px 20px #0008;
+        }
+
+        #chatbot-ventana {
+            display: none;
+            position: fixed;
+            right: 25px;
+            bottom: 105px;
+            z-index: 1000;
+
+            width: 490px;
+            max-width: calc(100vw - 30px);
+
+            height: 480px;
+            max-height: calc(100vh - 140px);
+
+            overflow: hidden;
+            flex-direction: column;
+
+            border: 1px solid var(--borde);
+            border-radius: 15px;
+            background: var(--panel);
+            box-shadow: 0 10px 35px #0009;
+        }
+
+        #chatbot-ventana.abierto {
+            display: flex;
+        }
+
+        .chatbot-cabecera {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            flex-shrink: 0;
+            background: linear-gradient(120deg, #111a30, #25245c);
+            border-bottom: 1px solid var(--borde);
+        }
+
+        .chatbot-titulo {
+            margin: 0;
+            color: var(--azul);
+            font-size: 16px;
+        }
+
+        .chatbot-subtitulo {
+            margin: 5px 0 0;
+            color: var(--texto-secundario);
+            font-size: 12px;
+        }
+
+        #chatbot-cerrar {
+            padding: 5px 10px;
+            background: transparent;
+            font-size: 20px;
+        }
+
+        /* DISTRIBUCIÓN DEL PERSONAJE Y CONVERSACIÓN */
+
+        .chatbot-cuerpo {
+            display: grid;
+            grid-template-columns: 135px minmax(0, 1fr);
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* PERSONAJE */
+
+        .chatbot-personaje {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            padding: 15px 8px;
+
+            background: linear-gradient(
+                180deg,
+                #17233d,
+                #10182b
+            );
+
+            border-right: 1px solid var(--borde);
+            text-align: center;
+        }
+
+        .chatbot-personaje img {
+            display: block;
+            width: 100%;
+            max-height: 260px;
+            object-fit: contain;
+            object-position: center;
+            border-radius: 10px;
+        }
+
+        .chatbot-personaje p {
+            margin: 0;
+            color: var(--azul);
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 1.5;
+        }
+
+        /* CUANDO TODAVÍA NO HAY IMAGEN */
+
+        .personaje-placeholder {
+            display: none;
+            width: 100%;
+            min-height: 180px;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border: 1px dashed var(--borde);
+            border-radius: 10px;
+            color: var(--texto-secundario);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .chatbot-personaje.sin-imagen .personaje-placeholder {
+            display: flex;
+        }
+
+        /* ÁREA DE CONVERSACIÓN */
+
+        .chatbot-contenido {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        #chatbot-mensajes {
+            display: flex;
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .chat-mensaje {
+            max-width: 90%;
+            padding: 11px 13px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .chat-bot {
+            align-self: flex-start;
+            background: var(--panel-claro);
+            border: 1px solid var(--borde);
+        }
+
+        .chat-usuario {
+            align-self: flex-end;
+            background: var(--azul-boton);
+            color: white;
+        }
+
+        .chat-escribiendo {
+            color: var(--texto-secundario);
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        .chatbot-formulario {
+            display: flex;
+            flex-shrink: 0;
+            gap: 8px;
+            padding: 12px;
+            border-top: 1px solid var(--borde);
+            background: #0e172a;
+        }
+
+        #chatbot-entrada {
+            flex: 1;
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid var(--borde);
+            border-radius: 8px;
+            outline: none;
+            background: var(--fondo);
+            color: white;
+            font-size: 14px;
+        }
+
+        #chatbot-entrada:focus {
+            border-color: var(--azul);
+        }
+
+        #chatbot-enviar {
+            padding: 10px 14px;
+        }
+
+        #chatbot-enviar:disabled {
+            opacity: .6;
+        }
+
+        /* TABLETS Y PANTALLAS PEQUEÑAS */
+
+        @media (max-width: 650px) {
+            header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            nav {
+                gap: 14px;
+            }
+
+            .hero {
+                padding: 45px 5%;
+            }
+
+            .busqueda {
+                flex-direction: column;
+            }
+
+            .busqueda button {
+                width: 100%;
+            }
+
+            main {
+                padding: 30px 5%;
+            }
+
+            .titulo-catalogo h2 {
+                font-size: 23px;
+            }
+
+            #chatbot-ventana {
+                right: 15px;
+                width: calc(100vw - 30px);
+            }
+        }
+
+        /* CELULARES */
+
+        @media (max-width: 450px) {
+            #chatbot-boton {
+                right: 15px;
+                bottom: 15px;
+            }
+
+            #chatbot-ventana {
+                right: 15px;
+                bottom: 90px;
+                width: calc(100vw - 30px);
+                height: min(480px, calc(100vh - 120px));
+            }
+
+            .chatbot-cuerpo {
+                grid-template-columns: 85px minmax(0, 1fr);
+            }
+
+            .chatbot-personaje {
+                padding: 10px 5px;
+            }
+
+            .chatbot-personaje img {
+                max-height: 170px;
+            }
+
+            .personaje-placeholder {
+                min-height: 130px;
+                font-size: 10px;
+            }
+
+            .chatbot-personaje p {
+                font-size: 10px;
+            }
+
+            #chatbot-mensajes {
+                padding: 10px;
+            }
+
+            .chat-mensaje {
+                max-width: 95%;
+                font-size: 13px;
+            }
+
+            .chatbot-formulario {
+                padding: 8px;
+                gap: 5px;
+            }
+
+            #chatbot-entrada {
+                padding: 10px 7px;
+                font-size: 12px;
+            }
+
+            #chatbot-enviar {
+                padding: 9px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<title>MUNDO INFORMÁTICO | Tecnología</title>
+
+<link
+    rel="icon"
+    type="image/jpeg"
+    href="{{ url_for('static', filename='img/logo.jpeg') }}"
+>
+
+<body>
+
+    <header>
+        <a class="logo" href="{{ url_for('inicio') }}">
+            MUNDO INFORMÁTICO
+        </a>
+
+        <nav aria-label="Navegación principal">
+
+            <a href="{{ url_for('inicio') }}">Inicio</a>
+
+            <div class="menu">
+                <a class="menu-principal"
+                   href="#catalogo"
+                   aria-haspopup="true">
+                    Categorías ▾
+                </a>
+
+                <div class="menu-opciones">
+                    <a href="/?q=Computadoras">Computadoras</a>
+                    <a href="/?q=Perifericos">Periféricos</a>
+                    <a href="/?q=Componentes">Componentes</a>
+                    <a href="/?q=Accesorios">Accesorios</a>
+                </div>
+            </div>
+
+            <a href="#catalogo">Productos</a>
+
+            <a href="#nosotros">Nosotros</a>
+
+            <a href="{{ url_for('ver_carrito') }}">
+                Mi carrito ({{ cantidad_carrito | default(0) }})
+            </a>
+
+            {% if session.get('usuario_id') %}
+
+                <span style="color: #55c8ff; font-weight: bold;">
+                    Hola, {{ session.get('usuario_nombre') }}
+                </span>
+
+                {% if session.get('usuario_perfil') == 'administrador' %}
+                    <a class="enlace-admin" href="{{ url_for('admin') }}">
+                        Panel de administración
+                    </a>
+                {% endif %}
+
+                <a href="{{ url_for('logout') }}">
+                    Cerrar sesión
+                </a>
+
+            {% else %}
+
+                <a href="{{ url_for('login') }}">
+                    Iniciar sesión
+                </a>
+
+                <a href="{{ url_for('registro') }}">
+                    Registrarse
+                </a>
+
+            {% endif %}
+
+        </nav>
+    </header>
+
+    <!-- MENSAJES DEL SISTEMA -->
+
+    {% with mensajes = get_flashed_messages() %}
+        {% if mensajes %}
+            <div class="mensajes">
+                {% for mensaje in mensajes %}
+                    <p class="mensaje">{{ mensaje }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- PRESENTACIÓN Y BUSCADOR -->
+
+    <section class="hero">
+
+        <h1>La tecnología que <span>necesitas</span></h1>
+
+        <p>
+            Descubre productos tecnológicos para estudiar,
+            trabajar y jugar.
+        </p>
+
+        <form class="busqueda" action="/" method="get">
+
+            <input
+                type="search"
+                name="q"
+                placeholder="Buscar laptops, teclados, componentes..."
+                value="{{ busqueda | default('', true) }}"
+                aria-label="Buscar productos"
+            >
+
+            <button type="submit">Buscar</button>
+
+        </form>
+
+    </section>
+
+    <!-- CATÁLOGO DE PRODUCTOS -->
+
+    <main id="catalogo">
+
+        <div class="titulo-catalogo">
+
+            <h2>
+                {% if busqueda %}
+                    Resultados de búsqueda
+                {% else %}
+                    Nuestros productos
+                {% endif %}
+            </h2>
+
+            <span class="contador">
+
+                {{ productos | length }}
+
+                {% if productos | length == 1 %}
+                    producto encontrado
+                {% else %}
+                    productos encontrados
+                {% endif %}
+
+            </span>
+
+        </div>
+
+        {% if productos %}
+
+            <section class="catalogo" aria-label="Catálogo de productos">
+
+                {% for producto in productos %}
+
+                    <article class="producto">
+
+                        <div class="producto-imagen">
+
+                            <img
+                                src="{{ producto.imagen or 'https://placehold.co/600x400/111827/55c8ff?text=Producto' }}"
+                                alt="{{ producto.nombre }}"
+                                loading="lazy"
+                                onerror="this.onerror=null;this.src='https://placehold.co/600x400/111827/55c8ff?text=Imagen+no+disponible';"
+                            >
+
+                        </div>
+
+                        <div class="producto-info">
+
+                            <span class="categoria">
+                                {{ producto.categoria or 'General' }}
+                            </span>
+
+                            <h3>{{ producto.nombre }}</h3>
+
+                            <p class="descripcion">
+                                {{ producto.descripcion or 'Consulta los detalles de este producto.' }}
+                            </p>
+
+                            <p class="precio">
+                                ${{ "%.2f" | format(producto.precio | float) }} MXN
+                            </p>
+
+                            {% if producto.existencia | int > 0 %}
+
+                                <p class="existencia disponible">
+                                    Disponibles: {{ producto.existencia }}
+                                </p>
+
+                            {% else %}
+
+                                <p class="existencia agotado">
+                                    Agotado
+                                </p>
+
+                            {% endif %}
+
+                            <form
+                                class="form-carrito"
+                                action="{{ url_for('agregar_carrito', id_producto=producto.id_producto) }}"
+                                method="POST"
+                            >
+
+                                <button
+                                    type="submit"
+                                    class="boton-carrito"
+                                    {% if producto.existencia | int <= 0 %}
+                                        disabled
+                                    {% endif %}
+                                >
+
+                                    {% if producto.existencia | int > 0 %}
+                                        Agregar al carrito
+                                    {% else %}
+                                        Producto agotado
+                                    {% endif %}
+
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </article>
+
+                {% endfor %}
+
+            </section>
+
+        {% else %}
+
+            <div class="vacio">
+
+                {% if busqueda %}
+
+                    <h3>No encontramos productos</h3>
+
+                    <p>
+                        No hay productos que coincidan con
+                        "{{ busqueda }}". Intenta con otra palabra.
+                    </p>
+
+                {% else %}
+
+                    <h3>Próximamente tendremos productos</h3>
+
+                    <p>
+                        En este momento no hay productos disponibles
+                        para mostrar.
+                    </p>
+
+                {% endif %}
+
+                <a class="boton" href="{{ url_for('inicio') }}">
+                    Ver todo el catálogo
+                </a>
+
+            </div>
+
+        {% endif %}
+
+    </main>
+
+    <!-- INFORMACIÓN DE LA TIENDA -->
+
+    <section id="nosotros" class="nosotros">
+
+        <h2>Tu espacio tecnológico</h2>
+
+        <p>
+            En MUNDO INFORMÁTICO acercamos la tecnología a todos.
+            Encuentra equipos, componentes y accesorios para tus
+            actividades escolares, profesionales y de entretenimiento.
+        </p>
+
+    </section>
+
+    <!-- PIE DE PÁGINA -->
+
+    <footer>
+        © 2026 MUNDO INFORMÁTICO · Sukiro en sus vidas
+    </footer>
+
+    <!-- ==========================================
+         CHATBOT MUNDO INFORMÁTICO
+    ========================================== -->
+
+    <button
+        type="button"
+        id="chatbot-boton"
+        aria-label="Abrir asistente virtual"
+        aria-expanded="false"
+    >
+        ?
+    </button>
+
+    <section
+        id="chatbot-ventana"
+        role="dialog"
+        aria-label="Asistente virtual de MUNDO INFORMÁTICO"
+        aria-hidden="true"
+    >
+
+        <div class="chatbot-cabecera">
+
+            <div>
+                <h3 class="chatbot-titulo">
+                    Asistente MUNDO INFORMÁTICO
+                </h3>
+
+                <p class="chatbot-subtitulo">
+                    Consultas sobre productos y precios
+                </p>
+            </div>
+
+            <button
+                type="button"
+                id="chatbot-cerrar"
+                aria-label="Cerrar chatbot"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <!-- PERSONAJE Y CONVERSACIÓN -->
+
+        <div class="chatbot-cuerpo">
+
+            <aside class="chatbot-personaje">
+
+                <img
+                    src="{{ url_for('static', filename='img/asistente.jpeg') }}"
+                    alt="Personaje del asistente virtual"
+                    onerror="
+                        this.parentElement.classList.add('sin-imagen');
+                        this.style.display='none';
+                    "
+                >
+
+                <div class="personaje-placeholder">
+                    Aquí aparecerá tu personaje
+                </div>
+
+                <p>Tu asesor virtual</p>
+
+            </aside>
+
+            <div class="chatbot-contenido">
+
+                <div
+                    id="chatbot-mensajes"
+                    aria-live="polite"
+                    aria-label="Conversación"
+                >
+
+                    <div class="chat-mensaje chat-bot">
+                        ¡Hola! Soy el asistente virtual de MUNDO INFORMÁTICO.
+
+                        Puedo ayudarte a consultar productos, precios y existencias.
+                        ¿Qué estás buscando?
+                    </div>
+
+                </div>
+
+                <form id="chatbot-formulario" class="chatbot-formulario">
+
+                    <input
+                        type="text"
+                        id="chatbot-entrada"
+                        placeholder="Escribe tu pregunta..."
+                        maxlength="500"
+                        autocomplete="off"
+                        aria-label="Escribe tu pregunta"
+                        required
+                    >
+
+                    <button type="submit" id="chatbot-enviar">
+                        Enviar
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ==========================================
+         JAVASCRIPT DEL CHATBOT
+    ========================================== -->
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const boton = document.getElementById("chatbot-boton");
+        const ventana = document.getElementById("chatbot-ventana");
+        const cerrar = document.getElementById("chatbot-cerrar");
+
+        const formulario = document.getElementById("chatbot-formulario");
+        const entrada = document.getElementById("chatbot-entrada");
+        const enviar = document.getElementById("chatbot-enviar");
+        const mensajes = document.getElementById("chatbot-mensajes");
+
+        // ABRIR Y CERRAR EL CHATBOT
+
+        boton.addEventListener("click", function () {
+
+            const abierto = ventana.classList.toggle("abierto");
+
+            boton.setAttribute("aria-expanded", abierto);
+            ventana.setAttribute("aria-hidden", !abierto);
+
+            if (abierto) {
+                entrada.focus();
+            }
+
+        });
+
+        cerrar.addEventListener("click", function () {
+
+            ventana.classList.remove("abierto");
+
+            boton.setAttribute("aria-expanded", "false");
+            ventana.setAttribute("aria-hidden", "true");
+
+        });
+
+        // CREAR MENSAJES
+
+        function agregarMensaje(texto, tipo) {
+
+            const mensaje = document.createElement("div");
+
+            mensaje.classList.add("chat-mensaje", tipo);
+
+            mensaje.textContent = texto;
+
+            mensajes.appendChild(mensaje);
+
+            mensajes.scrollTop = mensajes.scrollHeight;
+
+            return mensaje;
+
+        }
+
+        // ENVIAR PREGUNTAS A FLASK
+
+        formulario.addEventListener("submit", async function (evento) {
+
+            evento.preventDefault();
+
+            const pregunta = entrada.value.trim();
+
+            if (!pregunta || enviar.disabled) {
+                return;
+            }
+
+            agregarMensaje(pregunta, "chat-usuario");
+
+            entrada.value = "";
+            entrada.disabled = true;
+            enviar.disabled = true;
+
+            const indicador = agregarMensaje(
+                "Consultando nuestros productos...",
+                "chat-escribiendo"
+            );
+
+            try {
+
+                const respuesta = await fetch("/chatbot", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        mensaje: pregunta
+                    })
+
+                });
+
+                const datos = await respuesta.json();
+
+                indicador.remove();
+
+                if (!respuesta.ok) {
+
+                    agregarMensaje(
+                        datos.respuesta || "No se pudo procesar tu pregunta.",
+                        "chat-bot"
+                    );
+
+                } else {
+
+                    agregarMensaje(
+                        datos.respuesta || "No recibí una respuesta válida.",
+                        "chat-bot"
+                    );
+
+                }
+
+            } catch (error) {
+
+                indicador.remove();
+
+                agregarMensaje(
+                    "No pude conectarme con la tienda. Comprueba tu conexión e inténtalo nuevamente.",
+                    "chat-bot"
+                );
+
+                console.error("Error del chatbot:", error);
+
+            } finally {
+
+                entrada.disabled = false;
+                enviar.disabled = false;
+                entrada.focus();
+
+            }
+
+        });
+
+    });
+    </script>
+
+</body>
+</html>

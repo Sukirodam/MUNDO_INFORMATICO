@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle del pedido | MUNDO INFORMÁTICO</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #101827;
+            color: white;
+            padding: 30px;
+        }
+
+        h1, h2 {
+            color: #38bdf8;
+            margin-bottom: 20px;
+        }
+
+        .contenedor {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        .datos p {
+            margin: 12px 0;
+            color: #cbd5e1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 13px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        th {
+            color: #38bdf8;
+        }
+
+        .boton {
+            display: inline-block;
+            background: #0284c7;
+            border: none;
+            padding: 11px 16px;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .boton:hover {
+            background: #0369a1;
+        }
+
+        .boton-cancelar {
+            background: #dc2626;
+        }
+
+        .boton-cancelar:hover {
+            background: #b91c1c;
+        }
+
+        .boton-confirmar {
+            background: #16a34a;
+        }
+
+        .boton-confirmar:hover {
+            background: #15803d;
+        }
+
+        .total {
+            font-size: 23px;
+            color: #38bdf8;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .mensaje {
+            color: #cbd5e1;
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+
+        .estado-cancelado {
+            color: #f87171;
+        }
+
+        .estado-confirmado {
+            color: #4ade80;
+        }
+
+        .acciones {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+
+        @media(max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+
+            .tabla {
+                overflow-x: auto;
+            }
+
+            .acciones {
+                flex-direction: column;
+            }
+
+            .acciones button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Pedido #{{ pedido.id_pedido }}</h1>
+
+    <a class="boton" href="{{ url_for('admin_pedidos') }}">
+        Volver a pedidos
+    </a>
+
+    <section class="contenedor datos">
+
+        <h2>Información del cliente</h2>
+
+        <p><strong>Cliente:</strong> {{ pedido.cliente }}</p>
+        <p><strong>Correo:</strong> {{ pedido.correo_cliente }}</p>
+        <p><strong>Fecha:</strong> {{ pedido.fecha_pedido }}</p>
+        <p><strong>Nombre del receptor:</strong> {{ pedido.nombre_receptor }}</p>
+        <p><strong>Teléfono:</strong> {{ pedido.telefono_contacto }}</p>
+        <p><strong>Dirección:</strong> {{ pedido.direccion_entrega }}</p>
+        <p><strong>Referencias:</strong> {{ pedido.referencias or 'Sin referencias' }}</p>
+        <p><strong>Método de pago:</strong> {{ pedido.metodo_pago }}</p>
+
+        <p>
+            <strong>Estado actual:</strong>
+
+            {% if pedido.estado == 'cancelado' %}
+                <span class="estado-cancelado">Cancelado</span>
+
+            {% elif pedido.estado == 'pendiente' %}
+                Pendiente
+
+            {% elif pedido.estado == 'confirmado' %}
+                <span class="estado-confirmado">Confirmado</span>
+
+            {% else %}
+                <span class="estado-confirmado">
+                    {{ pedido.estado|capitalize }}
+                </span>
+            {% endif %}
+        </p>
+
+    </section>
+
+    <section class="contenedor">
+
+        <h2>Productos comprados</h2>
+
+        <div class="tabla">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio unitario</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for producto in productos %}
+                    <tr>
+                        <td>{{ producto.nombre }}</td>
+                        <td>{{ producto.cantidad }}</td>
+                        <td>${{ "%.2f"|format(producto.precio_unitario) }}</td>
+                        <td>
+                            ${{ "%.2f"|format(producto.cantidad * producto.precio_unitario) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4">No hay productos en este pedido.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <p class="total">
+            Total: ${{ "%.2f"|format(pedido.total) }}
+        </p>
+
+    </section>
+
+    <section class="contenedor">
+
+        <h2>Gestión del pedido</h2>
+
+        {% if pedido.estado == 'pendiente' %}
+
+            <p class="mensaje">
+                Este pedido está pendiente de revisión.
+                Puedes confirmar la compra o cancelarla.
+                Si lo cancelas, las existencias regresarán
+                automáticamente al inventario.
+            </p>
+
+            <div class="acciones">
+
+                <!-- CONFIRMAR PEDIDO -->
+                <form method="POST"
+                      action="{{ url_for('admin_actualizar_estado', id_pedido=pedido.id_pedido) }}"
+                      onsubmit="return confirm('¿Confirmas este pedido? Después no podrá modificarse ni cancelarse.');">
+
+                    <input type="hidden" name="estado" value="confirmado">
+
+                    <button class="boton boton-confirmar" type="submit">
+                        Confirmar pedido
+                    </button>
+
+                </form>
+
+                <!-- CANCELAR PEDIDO -->
+                <form method="POST"
+                      action="{{ url_for('admin_actualizar_estado', id_pedido=pedido.id_pedido) }}"
+                      onsubmit="return confirm('¿Estás seguro de cancelar este pedido? Las existencias serán devueltas al inventario.');">
+
+                    <input type="hidden" name="estado" value="cancelado">
+
+                    <button class="boton boton-cancelar" type="submit">
+                        Cancelar pedido
+                    </button>
+
+                </form>
+
+            </div>
+
+        {% elif pedido.estado == 'cancelado' %}
+
+            <p class="mensaje estado-cancelado">
+                Este pedido fue cancelado.
+                Las existencias ya fueron devueltas al inventario.
+                No se permiten más modificaciones.
+            </p>
+
+        {% elif pedido.estado == 'confirmado' %}
+
+            <p class="mensaje estado-confirmado">
+                Este pedido fue confirmado correctamente.
+                Ya no se permiten modificaciones ni cancelaciones
+                desde este panel.
+            </p>
+
+        {% else %}
+
+            <p class="mensaje estado-confirmado">
+                Este pedido ya fue procesado.
+                Su estado está protegido y no se permiten
+                modificaciones desde este panel.
+            </p>
+
+        {% endif %}
+
+    </section>
+
+</body>
+</html>

@@ -1,0 +1,264 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario | MUNDO INFORMÁTICO</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #0b1020;
+            color: #f4f7ff;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        h1, h2 { color: #55c8ff; }
+
+        a { color: #55c8ff; text-decoration: none; }
+
+        .boton {
+            display: inline-block;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 7px;
+            background: #1689df;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .boton:hover { background: #35adff; }
+
+        .contenedor {
+            padding: 22px;
+            margin-bottom: 25px;
+            background: #111a30;
+            border: 1px solid #293957;
+            border-radius: 12px;
+        }
+
+        .mensajes {
+            margin-bottom: 20px;
+            color: #80e6a0;
+        }
+
+        .tabla {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 850px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 13px;
+            border-bottom: 1px solid #293957;
+            text-align: left;
+        }
+
+        th { color: #55c8ff; }
+
+        input {
+            width: 75px;
+            padding: 9px;
+            border: 1px solid #344968;
+            border-radius: 6px;
+            background: #0b1020;
+            color: white;
+        }
+
+        .acciones {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .verde { background: #16834a; }
+        .rojo { background: #b93838; }
+        .gris { background: #475569; }
+
+        .estado-activo { color: #80e6a0; }
+        .estado-inactivo { color: #ff9999; }
+
+        .imagen {
+            width: 65px;
+            height: 55px;
+            object-fit: contain;
+            background: #18233b;
+            border-radius: 6px;
+        }
+
+        @media(max-width: 650px) {
+            body { padding: 15px; }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div>
+        <h1>MUNDO INFORMÁTICO</h1>
+        <p>Gestión de inventario</p>
+    </div>
+
+    <div class="acciones">
+        <a class="boton" href="{{ url_for('admin') }}">Panel principal</a>
+
+        <a class="boton gris" href="{{ url_for('admin_historial') }}">
+            Historial de movimientos
+        </a>
+
+        <a class="boton" href="{{ url_for('inicio') }}">Tienda</a>
+    </div>
+</header>
+
+{% with mensajes = get_flashed_messages() %}
+    {% if mensajes %}
+        <div class="mensajes">
+            {% for mensaje in mensajes %}
+                <p>{{ mensaje }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<section class="contenedor">
+    <h2>Productos registrados</h2>
+
+    <p>Administra los artículos y sus existencias.</p>
+
+    <a class="boton" href="{{ url_for('admin_nuevo_producto') }}">
+        + Registrar producto
+    </a>
+</section>
+
+<section class="contenedor">
+
+    <div class="tabla">
+        <table>
+            <thead>
+                <tr>
+                    <th>Imagen</th>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Precio</th>
+                    <th>Existencias</th>
+                    <th>Estado</th>
+                    <th>Modificar</th>
+                    <th>Inventario</th>
+                    <th>Activar / Desactivar</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for producto in productos %}
+                <tr>
+
+                    <td>
+                        {% if producto.imagen %}
+                            <img class="imagen"
+                                 src="{{ producto.imagen }}"
+                                 alt="{{ producto.nombre }}">
+                        {% else %}
+                            Sin imagen
+                        {% endif %}
+                    </td>
+
+                    <td>{{ producto.nombre }}</td>
+                    <td>{{ producto.categoria or 'General' }}</td>
+                    <td>${{ "%.2f"|format(producto.precio|float) }}</td>
+                    <td><strong>{{ producto.existencia }}</strong></td>
+
+                    <td>
+                        {% if producto.activo %}
+                            <span class="estado-activo">Activo</span>
+                        {% else %}
+                            <span class="estado-inactivo">Inactivo</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <a class="boton"
+                           href="{{ url_for('admin_editar_producto', id_producto=producto.id_producto) }}">
+                            Editar
+                        </a>
+                    </td>
+
+                    <td>
+                        <form method="POST"
+                              action="{{ url_for('admin_actualizar_existencias', id_producto=producto.id_producto) }}">
+
+                            <input type="number"
+                                   name="cantidad"
+                                   min="1"
+                                   step="1"
+                                   placeholder="Unidades"
+                                   required>
+
+                            <div class="acciones" style="margin-top: 7px;">
+                                <button class="boton verde"
+                                        type="submit"
+                                        name="operacion"
+                                        value="agregar">
+                                    + Agregar
+                                </button>
+
+                                <button class="boton rojo"
+                                        type="submit"
+                                        name="operacion"
+                                        value="retirar">
+                                    - Retirar
+                                </button>
+                            </div>
+                        </form>
+                    </td>
+
+                    <td>
+                        <form method="POST"
+                              action="{{ url_for('admin_cambiar_estado_producto', id_producto=producto.id_producto) }}">
+
+                            {% if producto.activo %}
+                                <button class="boton rojo" type="submit">
+                                    Desactivar
+                                </button>
+                            {% else %}
+                                <button class="boton verde" type="submit">
+                                    Activar
+                                </button>
+                            {% endif %}
+
+                        </form>
+                    </td>
+
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9">Todavía no hay productos registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</section>
+
+</body>
+</html>

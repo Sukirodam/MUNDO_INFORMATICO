@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de administración | MUNDO INFORMÁTICO</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #101827;
+            color: white;
+            padding: 30px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 35px;
+        }
+
+        h1 {
+            color: #38bdf8;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 15px;
+        }
+
+        nav a:hover {
+            color: #38bdf8;
+        }
+
+        .estadisticas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+
+        .tarjeta {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        .tarjeta h3 {
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
+
+        .tarjeta p {
+            font-size: 27px;
+            font-weight: bold;
+            color: #38bdf8;
+        }
+
+        .seccion {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 12px;
+            overflow-x: auto;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #38bdf8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        th, td {
+            padding: 14px;
+            border-bottom: 1px solid #334155;
+            text-align: left;
+        }
+
+        th {
+            color: #38bdf8;
+        }
+
+        .boton {
+            display: inline-block;
+            background: #0284c7;
+            color: white;
+            padding: 9px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+        }
+
+        .boton:hover {
+            background: #0369a1;
+        }
+
+        .acciones {
+            margin-bottom: 20px;
+        }
+
+        @media(max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div>
+        <h1>MUNDO INFORMÁTICO</h1>
+        <p>Panel de administración</p>
+    </div>
+
+    <nav>
+        <a href="{{ url_for('admin') }}">Inicio</a>
+        <a href="{{ url_for('admin_pedidos') }}">Pedidos</a>
+        <a href="{{ url_for('admin_inventario') }}">Inventario</a>
+        <a href="{{ url_for('admin_historial') }}">Historial</a>
+        <a href="{{ url_for('inicio') }}">Tienda</a>
+        <a href="{{ url_for('logout') }}">Cerrar sesión</a>
+    </nav>
+</header>
+
+<section class="estadisticas">
+
+    <div class="tarjeta">
+        <h3>Total de pedidos</h3>
+        <p>{{ total_pedidos }}</p>
+    </div>
+
+    <div class="tarjeta">
+        <h3>Pedidos pendientes</h3>
+        <p>{{ pendientes }}</p>
+    </div>
+
+    <div class="tarjeta">
+        <h3>Clientes registrados</h3>
+        <p>{{ total_clientes }}</p>
+    </div>
+
+    <div class="tarjeta">
+        <h3>Ventas realizadas</h3>
+        <p>${{ "%.2f"|format(ventas or 0) }}</p>
+    </div>
+
+</section>
+
+<section class="seccion">
+
+    <h2>Pedidos recientes</h2>
+
+    <div class="acciones">
+        <a class="boton" href="{{ url_for('admin_pedidos') }}">
+            Administrar pedidos
+        </a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Fecha</th>
+                <th>Total</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for pedido in pedidos_recientes %}
+            <tr>
+                <td>#{{ pedido.id_pedido }}</td>
+                <td>{{ pedido.cliente }}</td>
+                <td>{{ pedido.fecha_pedido }}</td>
+                <td>${{ "%.2f"|format(pedido.total) }}</td>
+                <td>{{ pedido.estado }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5">Todavía no hay pedidos registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</section>
+
+</body>
+</html>

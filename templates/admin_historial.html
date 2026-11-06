@@ -1,0 +1,354 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Historial de Inventario | MUNDO INFORMÁTICO</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #0b1020;
+            color: #ffffff;
+            padding: 30px;
+        }
+
+        .contenedor {
+            max-width: 1500px;
+            margin: auto;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #60a5fa;
+        }
+
+        .descripcion {
+            color: #aab4ca;
+            margin-bottom: 25px;
+        }
+
+        .boton {
+            display: inline-block;
+            padding: 11px 18px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 7px;
+            margin-bottom: 20px;
+        }
+
+        .boton:hover {
+            background: #1d4ed8;
+        }
+
+        .estadisticas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .tarjeta {
+            background: #151e33;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #263550;
+        }
+
+        .tarjeta h3 {
+            font-size: 14px;
+            color: #aab4ca;
+            margin-bottom: 12px;
+        }
+
+        .tarjeta p {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .filtros {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            background: #151e33;
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        input,
+        select {
+            padding: 12px;
+            background: #0b1020;
+            color: white;
+            border: 1px solid #334155;
+            border-radius: 7px;
+        }
+
+        input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 7px;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .tabla-contenedor {
+            overflow-x: auto;
+            background: #151e33;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1000px;
+        }
+
+        th,
+        td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #263550;
+        }
+
+        th {
+            background: #1e293b;
+            color: #93c5fd;
+        }
+
+        tr:hover {
+            background: #1e293b;
+        }
+
+        .estado {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .entrada {
+            background: #14532d;
+            color: #86efac;
+        }
+
+        .salida {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+
+        .venta {
+            background: #1e3a8a;
+            color: #93c5fd;
+        }
+
+        .vacio {
+            padding: 35px;
+            text-align: center;
+            color: #aab4ca;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+
+            .filtros {
+                flex-direction: column;
+            }
+
+            input,
+            select,
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <h1>Historial de inventario</h1>
+
+    <p class="descripcion">
+        Consulta las entradas, salidas y ventas
+        realizadas en MUNDO INFORMÁTICO.
+    </p>
+
+    <a href="{{ url_for('admin_inventario') }}" class="boton">
+        Volver al inventario
+    </a>
+
+    <!-- ESTADÍSTICAS -->
+
+    <div class="estadisticas">
+
+        <div class="tarjeta">
+            <h3>Total de movimientos</h3>
+            <p>{{ estadisticas.total_movimientos }}</p>
+        </div>
+
+        <div class="tarjeta">
+            <h3>Unidades de entrada</h3>
+            <p>{{ estadisticas.total_entradas }}</p>
+        </div>
+
+        <div class="tarjeta">
+            <h3>Unidades retiradas</h3>
+            <p>{{ estadisticas.total_salidas }}</p>
+        </div>
+
+        <div class="tarjeta">
+            <h3>Unidades vendidas</h3>
+            <p>{{ estadisticas.total_ventas }}</p>
+        </div>
+
+    </div>
+
+    <!-- FILTROS -->
+
+    <form method="GET"
+          action="{{ url_for('admin_historial') }}"
+          class="filtros">
+
+        <input
+            type="text"
+            name="q"
+            placeholder="Buscar producto, usuario o motivo..."
+            value="{{ busqueda }}"
+        >
+
+        <select name="tipo">
+
+            <option value="">Todos los movimientos</option>
+
+            <option value="entrada"
+                {% if tipo == 'entrada' %}selected{% endif %}>
+                Entradas
+            </option>
+
+            <option value="salida"
+                {% if tipo == 'salida' %}selected{% endif %}>
+                Salidas
+            </option>
+
+            <option value="venta"
+                {% if tipo == 'venta' %}selected{% endif %}>
+                Ventas
+            </option>
+
+        </select>
+
+        <button type="submit">
+            Buscar
+        </button>
+
+        <a href="{{ url_for('admin_historial') }}"
+           class="boton"
+           style="margin:0;">
+
+            Limpiar
+
+        </a>
+
+    </form>
+
+    <!-- TABLA DE MOVIMIENTOS -->
+
+    <div class="tabla-contenedor">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th>Movimiento</th>
+                    <th>Cantidad</th>
+                    <th>Existencia anterior</th>
+                    <th>Existencia nueva</th>
+                    <th>Responsable</th>
+                    <th>Motivo</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for movimiento in movimientos %}
+
+                <tr>
+
+                    <td>{{ movimiento.id_movimiento }}</td>
+
+                    <td>{{ movimiento.fecha_movimiento }}</td>
+
+                    <td>{{ movimiento.producto }}</td>
+
+                    <td>
+                        <span class="estado {{ movimiento.tipo_movimiento }}">
+                            {{ movimiento.tipo_movimiento | upper }}
+                        </span>
+                    </td>
+
+                    <td>{{ movimiento.cantidad }}</td>
+
+                    <td>{{ movimiento.existencia_anterior }}</td>
+
+                    <td>{{ movimiento.existencia_nueva }}</td>
+
+                    <td>
+                        {{ movimiento.usuario }}
+                        <br>
+                        <small>{{ movimiento.perfil }}</small>
+                    </td>
+
+                    <td>
+                        {{ movimiento.motivo or 'Sin motivo' }}
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+                    <td colspan="9" class="vacio">
+                        No se encontraron movimientos de inventario.
+                    </td>
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+</body>
+</html>

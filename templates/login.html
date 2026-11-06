@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión | MUNDO INFORMÁTICO</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #0b1020;
+            color: white;
+        }
+
+        .contenedor {
+            width: 100%;
+            max-width: 430px;
+            padding: 30px;
+            background: #111a30;
+            border: 1px solid #293957;
+            border-radius: 14px;
+        }
+
+        h1 { color: #55c8ff; text-align: center; }
+
+        label { display: block; margin-top: 18px; }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 7px;
+            border: 1px solid #293957;
+            border-radius: 7px;
+            background: #0b1020;
+            color: white;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 13px;
+            border: none;
+            border-radius: 7px;
+            background: #1689df;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover { background: #35adff; }
+
+        a { color: #55c8ff; text-decoration: none; }
+
+        .mensajes { color: #ff9b9b; margin-top: 15px; }
+
+        .enlace { text-align: center; margin-top: 20px; }
+    </style>
+</head>
+
+<body>
+    <main class="contenedor">
+
+        <h1>Iniciar sesión</h1>
+        <p style="text-align:center;">MUNDO INFORMÁTICO</p>
+
+        {% with mensajes = get_flashed_messages() %}
+            {% if mensajes %}
+                <div class="mensajes">
+                    {% for mensaje in mensajes %}
+                        <p>{{ mensaje }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+
+            <label>Correo electrónico</label>
+            <input type="email" name="correo" required>
+
+            <label>Contraseña</label>
+            <input type="password" name="contrasena" required>
+
+            <button type="submit">Entrar</button>
+
+        </form>
+
+        <div class="enlace">
+            ¿No tienes cuenta?
+            <a href="{{ url_for('registro') }}">Crear cuenta</a>
+        </div>
+
+        <div class="enlace">
+            <a href="{{ url_for('inicio') }}">Volver a la tienda</a>
+        </div>
+
+    </main>
+</body>
+</html>

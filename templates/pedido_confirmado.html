@@ -1,0 +1,482 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Pedido confirmado | MUNDO INFORMÁTICO</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #080d18;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #101a2d;
+            padding: 22px 7%;
+            border-bottom: 1px solid #243653;
+        }
+
+        header h1 {
+            color: #38bdf8;
+            font-size: 25px;
+        }
+
+        header p {
+            color: #a9b8cc;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        .contenedor {
+            width: 90%;
+            max-width: 850px;
+            margin: 40px auto;
+        }
+
+        .confirmacion {
+            text-align: center;
+            padding: 30px 20px;
+            background: #102b28;
+            border: 1px solid #166b57;
+            border-radius: 14px;
+            margin-bottom: 25px;
+        }
+
+        .icono {
+            font-size: 55px;
+            color: #4ade80;
+            margin-bottom: 12px;
+        }
+
+        .confirmacion h2 {
+            color: #4ade80;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .confirmacion p {
+            color: #d1fae5;
+            line-height: 1.6;
+        }
+
+        .numero {
+            color: #38bdf8;
+            font-weight: bold;
+        }
+
+        .panel {
+            background: #111c30;
+            border: 1px solid #243653;
+            border-radius: 14px;
+            padding: 25px;
+            margin-bottom: 22px;
+        }
+
+        .panel h3 {
+            color: #38bdf8;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .datos {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        .dato {
+            margin-bottom: 5px;
+        }
+
+        .dato span {
+            display: block;
+            color: #94a3b8;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .dato strong {
+            color: #e2e8f0;
+            font-size: 14px;
+            overflow-wrap: anywhere;
+        }
+
+        .producto {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid #26364f;
+        }
+
+        .producto-info {
+            flex: 1;
+        }
+
+        .producto-info h4 {
+            color: #ffffff;
+            font-size: 15px;
+            margin-bottom: 7px;
+        }
+
+        .producto-info p {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .subtotal {
+            color: #38bdf8;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 22px;
+            padding-top: 18px;
+            border-top: 1px solid #344967;
+        }
+
+        .total span {
+            font-size: 18px;
+            color: #cbd5e1;
+        }
+
+        .total strong {
+            font-size: 27px;
+            color: #38bdf8;
+        }
+
+        .estado {
+            display: inline-block;
+            background: #3b2d13;
+            color: #facc15;
+            padding: 7px 13px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .pago {
+            background: #0c2636;
+            border: 1px solid #17648b;
+            padding: 17px;
+            border-radius: 9px;
+            margin-top: 18px;
+        }
+
+        .pago h4 {
+            color: #38bdf8;
+            margin-bottom: 7px;
+        }
+
+        .pago p {
+            color: #cbd5e1;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .botones {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        .boton {
+            flex: 1;
+            text-decoration: none;
+            text-align: center;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .inicio {
+            background: #0284c7;
+            color: white;
+        }
+
+        .inicio:hover {
+            background: #0369a1;
+        }
+
+        .imprimir {
+            background: #26364f;
+            color: #dbeafe;
+            border: none;
+            cursor: pointer;
+        }
+
+        .imprimir:hover {
+            background: #344967;
+        }
+
+        footer {
+            text-align: center;
+            color: #64748b;
+            padding: 30px 15px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 600px) {
+            .datos {
+                grid-template-columns: 1fr;
+            }
+
+            .botones {
+                flex-direction: column;
+            }
+
+            .contenedor {
+                width: 94%;
+            }
+
+            .total strong {
+                font-size: 22px;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+
+            header, footer, .botones {
+                display: none;
+            }
+
+            .contenedor {
+                width: 100%;
+                margin: 0;
+            }
+
+            .panel, .confirmacion {
+                background: white;
+                color: black;
+                border: 1px solid #cccccc;
+                break-inside: avoid;
+            }
+
+            .confirmacion h2,
+            .confirmacion p,
+            .dato strong,
+            .producto-info h4,
+            .producto-info p,
+            .total span,
+            .panel h3 {
+                color: black;
+            }
+
+            .subtotal, .total strong {
+                color: black;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>MUNDO INFORMÁTICO</h1>
+        <p>Tu tecnología, en un solo lugar.</p>
+    </header>
+
+    <main class="contenedor">
+
+        <!-- CONFIRMACIÓN -->
+
+        <section class="confirmacion">
+
+            <div class="icono">✓</div>
+
+            <h2>¡Pedido registrado!</h2>
+
+            <p>
+                Gracias por comprar en MUNDO INFORMÁTICO.
+                Tu pedido se ha registrado correctamente.
+            </p>
+
+            <p>
+                Número de pedido:
+                <span class="numero">
+                    #{{ pedido.id_pedido }}
+                </span>
+            </p>
+
+        </section>
+
+
+        <!-- INFORMACIÓN DEL PEDIDO -->
+
+        <section class="panel">
+
+            <h3>Información del pedido</h3>
+
+            <div class="datos">
+
+                <div class="dato">
+                    <span>Número de pedido</span>
+                    <strong>#{{ pedido.id_pedido }}</strong>
+                </div>
+
+                <div class="dato">
+                    <span>Fecha de compra</span>
+                    <strong>{{ pedido.fecha_pedido }}</strong>
+                </div>
+
+                <div class="dato">
+                    <span>Estado</span>
+                    <strong>
+                        <span class="estado">
+                            {{ pedido.estado|capitalize }}
+                        </span>
+                    </strong>
+                </div>
+
+                <div class="dato">
+                    <span>Método de pago</span>
+                    <strong>Pago contra entrega</strong>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- DATOS DE ENTREGA -->
+
+        <section class="panel">
+
+            <h3>Datos de entrega</h3>
+
+            <div class="datos">
+
+                <div class="dato">
+                    <span>Nombre de quien recibe</span>
+                    <strong>{{ pedido.nombre_receptor }}</strong>
+                </div>
+
+                <div class="dato">
+                    <span>Teléfono de contacto</span>
+                    <strong>{{ pedido.telefono_contacto }}</strong>
+                </div>
+
+                <div class="dato" style="grid-column: 1 / -1;">
+                    <span>Dirección</span>
+                    <strong>{{ pedido.direccion_entrega }}</strong>
+                </div>
+
+                <div class="dato" style="grid-column: 1 / -1;">
+                    <span>Referencias</span>
+                    <strong>
+                        {{ pedido.referencias or 'Sin referencias adicionales' }}
+                    </strong>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- PRODUCTOS -->
+
+        <section class="panel">
+
+            <h3>Productos comprados</h3>
+
+            {% for producto in productos %}
+
+                <div class="producto">
+
+                    <div class="producto-info">
+
+                        <h4>{{ producto.nombre }}</h4>
+
+                        <p>
+                            Cantidad: {{ producto.cantidad }}
+                        </p>
+
+                        <p>
+                            Precio unitario:
+                            ${{ "%.2f"|format(producto.precio_unitario) }}
+                        </p>
+
+                    </div>
+
+                    <span class="subtotal">
+                        ${{ "%.2f"|format(producto.subtotal) }}
+                    </span>
+
+                </div>
+
+            {% endfor %}
+
+            <div class="total">
+
+                <span>Total del pedido:</span>
+
+                <strong>
+                    ${{ "%.2f"|format(pedido.total) }}
+                </strong>
+
+            </div>
+
+            <div class="pago">
+
+                <h4>Pago contra entrega</h4>
+
+                <p>
+                    El importe se pagará cuando recibas tus productos.
+                    Por el momento, tu pedido se encuentra pendiente.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- BOTONES -->
+
+        <div class="botones">
+
+            <a
+                href="{{ url_for('inicio') }}"
+                class="boton inicio"
+            >
+                Volver a la tienda
+            </a>
+
+            <button
+                onclick="window.print()"
+                class="boton imprimir"
+            >
+                Imprimir comprobante
+            </button>
+
+        </div>
+
+    </main>
+
+    <footer>
+        © 2026 MUNDO INFORMÁTICO. Todos los derechos reservados.
+    </footer>
+
+</body>
+</html>

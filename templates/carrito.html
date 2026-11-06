@@ -1,0 +1,277 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Mi carrito | MUNDO INFORMÁTICO</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px 6%;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #0b1020;
+            color: #f4f7ff;
+        }
+
+        h1 {
+            color: #55c8ff;
+        }
+
+        a {
+            color: #55c8ff;
+            text-decoration: none;
+        }
+
+        .contenedor {
+            max-width: 950px;
+            margin: auto;
+        }
+
+        .producto {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin: 18px 0;
+            padding: 18px;
+            border: 1px solid #293957;
+            border-radius: 12px;
+            background: #111a30;
+        }
+
+        .producto img {
+            width: 120px;
+            height: 100px;
+            object-fit: contain;
+            background: #18233b;
+            border-radius: 8px;
+        }
+
+        .informacion {
+            flex: 1;
+        }
+
+        .informacion h3 {
+            margin-top: 0;
+        }
+
+        .precio {
+            color: #55c8ff;
+            font-weight: bold;
+        }
+
+        input {
+            width: 75px;
+            padding: 9px;
+            border: 1px solid #293957;
+            border-radius: 6px;
+            background: #0b1020;
+            color: white;
+        }
+
+        button, .boton {
+            display: inline-block;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 7px;
+            background: #1689df;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover, .boton:hover {
+            background: #35adff;
+        }
+
+        .eliminar {
+            background: #b83248;
+        }
+
+        .eliminar:hover {
+            background: #e0445d;
+        }
+
+        .acciones {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .total {
+            margin-top: 25px;
+            padding: 22px;
+            border: 1px solid #293957;
+            border-radius: 12px;
+            background: #111a30;
+            text-align: right;
+        }
+
+        .total h2 {
+            color: #55c8ff;
+        }
+
+        .vacio {
+            padding: 45px 20px;
+            border: 1px solid #293957;
+            border-radius: 12px;
+            background: #111a30;
+            text-align: center;
+        }
+
+        .mensajes {
+            margin: 15px 0;
+            color: #80e6a0;
+        }
+
+        @media (max-width: 600px) {
+            .producto {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .producto img {
+                width: 100%;
+                height: 160px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <a href="/">← Volver a la tienda</a>
+
+    <h1>Mi carrito de compras</h1>
+
+    {% with mensajes = get_flashed_messages() %}
+        {% if mensajes %}
+            <div class="mensajes">
+                {% for mensaje in mensajes %}
+                    <p>{{ mensaje }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% if productos %}
+
+        {% for producto in productos %}
+
+            <article class="producto">
+
+                <img
+                    src="{{ producto.imagen }}"
+                    alt="{{ producto.nombre }}"
+                    onerror="this.onerror=null;this.src='https://placehold.co/600x400/111827/55c8ff?text=Producto';"
+                >
+
+                <div class="informacion">
+
+                    <h3>{{ producto.nombre }}</h3>
+
+                    <p class="precio">
+                        ${{ "%.2f" | format(producto.precio | float) }} MXN
+                    </p>
+
+                    <p>
+                        Subtotal:
+                        ${{ "%.2f" | format(producto.subtotal) }} MXN
+                    </p>
+
+                    <p>
+                        Existencias disponibles: {{ producto.existencia }}
+                    </p>
+
+                    <form
+                        action="{{ url_for('actualizar_carrito', id_producto=producto.id_producto) }}"
+                        method="POST">
+
+                        <label>Cantidad:</label>
+
+                        <input
+                            type="number"
+                            name="cantidad"
+                            min="1"
+                            max="{{ producto.existencia }}"
+                            value="{{ producto.cantidad }}"
+                            required
+                        >
+
+                        <button type="submit">
+                            Actualizar
+                        </button>
+
+                    </form>
+
+                    <div class="acciones">
+
+                        <form
+                            action="{{ url_for('eliminar_carrito', id_producto=producto.id_producto) }}"
+                            method="POST">
+
+                            <button type="submit" class="eliminar">
+                                Eliminar
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+        {% endfor %}
+
+        <div class="total">
+
+            <h2>
+                Total: ${{ "%.2f" | format(total) }} MXN
+            </h2>
+
+            <form action="{{ url_for('vaciar_carrito') }}"
+                  method="POST">
+
+                <button type="submit" class="eliminar">
+                    Vaciar carrito
+                </button>
+
+            </form>
+
+<a href="{{ url_for('finalizar_compra') }}">
+    Finalizar compra
+</a>
+        </div>
+
+    {% else %}
+
+        <div class="vacio">
+
+            <h2>Tu carrito está vacío</h2>
+
+            <p>
+                Todavía no has agregado productos a tu carrito.
+            </p>
+
+            <a href="/" class="boton">
+                Explorar productos
+            </a>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Producto | MUNDO INFORMÁTICO</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #0b1020;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        .contenedor {
+            max-width: 650px;
+            margin: 30px auto;
+            padding: 28px;
+            background: #111a30;
+            border: 1px solid #293957;
+            border-radius: 14px;
+        }
+
+        h1 { color: #55c8ff; }
+
+        label {
+            display: block;
+            margin: 17px 0 7px;
+            color: #b7c3d9;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #344968;
+            border-radius: 7px;
+            outline: none;
+            background: #0b1020;
+            color: white;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            border-color: #55c8ff;
+        }
+
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .boton {
+            display: inline-block;
+            margin-top: 22px;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 7px;
+            background: #1689df;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .boton:hover { background: #35adff; }
+
+        .volver {
+            display: inline-block;
+            margin-top: 15px;
+            color: #55c8ff;
+            text-decoration: none;
+        }
+
+        .mensajes { color: #ff9999; }
+
+        @media(max-width: 600px) {
+            body { padding: 12px; }
+            .contenedor { padding: 20px; }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    {% if producto %}
+        <h1>Modificar producto</h1>
+        <p>Actualiza la información del artículo.</p>
+    {% else %}
+        <h1>Registrar producto</h1>
+        <p>Introduce los datos del nuevo artículo.</p>
+    {% endif %}
+
+    {% with mensajes = get_flashed_messages() %}
+        {% if mensajes %}
+            <div class="mensajes">
+                {% for mensaje in mensajes %}
+                    <p>{{ mensaje }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST"
+          action="{% if producto %}{{ url_for('admin_editar_producto', id_producto=producto.id_producto) }}{% else %}{{ url_for('admin_nuevo_producto') }}{% endif %}">
+
+        <label>Nombre del producto</label>
+        <input type="text"
+               name="nombre"
+               maxlength="150"
+               value="{{ producto.nombre if producto else '' }}"
+               required>
+
+        <label>Categoría</label>
+        <select name="id_categoria" required>
+            <option value="">Selecciona una categoría</option>
+
+            {% for categoria in categorias %}
+                <option value="{{ categoria.id_categoria }}"
+                    {% if producto and producto.id_categoria == categoria.id_categoria %}
+                        selected
+                    {% endif %}>
+                    {{ categoria.nombre }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label>Descripción</label>
+        <textarea name="descripcion"
+                  maxlength="1000">{{ producto.descripcion if producto else '' }}</textarea>
+
+        <label>Precio (MXN)</label>
+        <input type="number"
+               name="precio"
+               min="0"
+               step="0.01"
+               value="{{ producto.precio if producto else '' }}"
+               required>
+
+        {% if not producto %}
+            <label>Existencias iniciales</label>
+            <input type="number"
+                   name="existencia"
+                   min="0"
+                   step="1"
+                   value="0"
+                   required>
+        {% else %}
+            <p style="color:#b7c3d9; margin-top:20px;">
+                Existencias actuales: <strong>{{ producto.existencia }}</strong>.
+                Modifícalas desde la pantalla de inventario.
+            </p>
+        {% endif %}
+
+        <label>Dirección de imagen</label>
+        <input type="text"
+               name="imagen"
+               maxlength="1000"
+               value="{{ producto.imagen if producto else '' }}"
+               placeholder="https://ejemplo.com/imagen.jpg">
+
+        <button class="boton" type="submit">
+            {% if producto %}
+                Guardar modificaciones
+            {% else %}
+                Registrar producto
+            {% endif %}
+        </button>
+
+    </form>
+
+    <a class="volver" href="{{ url_for('admin_inventario') }}">
+        ← Volver al inventario
+    </a>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,454 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Finalizar compra | MUNDO INFORMÁTICO</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #080d18;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #101a2d;
+            padding: 22px 7%;
+            border-bottom: 1px solid #243653;
+        }
+
+        header h1 {
+            color: #38bdf8;
+            font-size: 25px;
+        }
+
+        header p {
+            color: #a9b8cc;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        .contenedor {
+            width: 90%;
+            max-width: 1150px;
+            margin: 35px auto;
+        }
+
+        .titulo {
+            margin-bottom: 25px;
+        }
+
+        .titulo h2 {
+            font-size: 29px;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .titulo p {
+            color: #94a3b8;
+        }
+
+        .contenido {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 25px;
+            align-items: start;
+        }
+
+        .panel {
+            background: #111c30;
+            border: 1px solid #243653;
+            border-radius: 14px;
+            padding: 25px;
+        }
+
+        .panel h3 {
+            color: #38bdf8;
+            margin-bottom: 22px;
+            font-size: 20px;
+        }
+
+        .campo {
+            margin-bottom: 18px;
+        }
+
+        .campo label {
+            display: block;
+            margin-bottom: 8px;
+            color: #dbeafe;
+            font-size: 14px;
+        }
+
+        .campo input,
+        .campo textarea {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #344967;
+            background: #080f1d;
+            color: white;
+            border-radius: 8px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .campo input:focus,
+        .campo textarea:focus {
+            border-color: #38bdf8;
+        }
+
+        .campo textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .campo input::placeholder,
+        .campo textarea::placeholder {
+            color: #718096;
+        }
+
+        .obligatorio {
+            color: #f87171;
+        }
+
+        .producto {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            padding: 15px 0;
+            border-bottom: 1px solid #26364f;
+        }
+
+        .producto img {
+            width: 65px;
+            height: 65px;
+            object-fit: contain;
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 5px;
+        }
+
+        .producto-info {
+            flex: 1;
+        }
+
+        .producto-info h4 {
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .producto-info p {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .subtotal {
+            color: #38bdf8;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 22px;
+            padding-top: 15px;
+            border-top: 1px solid #344967;
+        }
+
+        .total span {
+            color: #cbd5e1;
+            font-size: 17px;
+        }
+
+        .total strong {
+            color: #38bdf8;
+            font-size: 25px;
+        }
+
+        .pago {
+            margin-top: 22px;
+            background: #0c2636;
+            border: 1px solid #17648b;
+            border-radius: 9px;
+            padding: 15px;
+        }
+
+        .pago h4 {
+            color: #38bdf8;
+            margin-bottom: 7px;
+        }
+
+        .pago p {
+            color: #cbd5e1;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .botones {
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .boton {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            text-align: center;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+
+        .confirmar {
+            background: #0284c7;
+            color: white;
+        }
+
+        .confirmar:hover {
+            background: #0369a1;
+        }
+
+        .volver {
+            background: #26364f;
+            color: #dbeafe;
+        }
+
+        .volver:hover {
+            background: #344967;
+        }
+
+        .mensaje {
+            background: #42212a;
+            border: 1px solid #a33b50;
+            color: #fecdd3;
+            padding: 12px;
+            margin-bottom: 18px;
+            border-radius: 8px;
+        }
+
+        footer {
+            text-align: center;
+            color: #64748b;
+            padding: 30px 15px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 800px) {
+            .contenido {
+                grid-template-columns: 1fr;
+            }
+
+            .contenedor {
+                width: 94%;
+            }
+
+            header {
+                padding: 20px 5%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>MUNDO INFORMÁTICO</h1>
+        <p>Tu tecnología, en un solo lugar.</p>
+    </header>
+
+    <main class="contenedor">
+
+        <section class="titulo">
+            <h2>Finalizar compra</h2>
+            <p>Completa tus datos para recibir tu pedido.</p>
+        </section>
+
+        {% with mensajes = get_flashed_messages() %}
+            {% if mensajes %}
+                {% for mensaje in mensajes %}
+                    <div class="mensaje">{{ mensaje }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('confirmar_pedido') }}" method="POST">
+
+            <div class="contenido">
+
+                <!-- DATOS DE ENTREGA -->
+
+                <section class="panel">
+
+                    <h3>Datos de entrega</h3>
+
+                    <div class="campo">
+                        <label for="nombre_receptor">
+                            Nombre de quien recibe
+                            <span class="obligatorio">*</span>
+                        </label>
+
+                        <input
+                            type="text"
+                            id="nombre_receptor"
+                            name="nombre_receptor"
+                            maxlength="150"
+                            placeholder="Nombre completo"
+                            required
+                        >
+                    </div>
+
+                    <div class="campo">
+                        <label for="telefono_contacto">
+                            Teléfono de contacto
+                            <span class="obligatorio">*</span>
+                        </label>
+
+                        <input
+                            type="tel"
+                            id="telefono_contacto"
+                            name="telefono_contacto"
+                            maxlength="20"
+                            placeholder="Ejemplo: 9621234567"
+                            required
+                        >
+                    </div>
+
+                    <div class="campo">
+                        <label for="direccion_entrega">
+                            Dirección completa
+                            <span class="obligatorio">*</span>
+                        </label>
+
+                        <textarea
+                            id="direccion_entrega"
+                            name="direccion_entrega"
+                            maxlength="500"
+                            placeholder="Calle, número, colonia, ciudad y código postal"
+                            required
+                        ></textarea>
+                    </div>
+
+                    <div class="campo">
+                        <label for="referencias">
+                            Referencias adicionales
+                        </label>
+
+                        <textarea
+                            id="referencias"
+                            name="referencias"
+                            maxlength="500"
+                            placeholder="Indicaciones para localizar tu domicilio (opcional)"
+                        ></textarea>
+                    </div>
+
+                </section>
+
+
+                <!-- RESUMEN DE COMPRA -->
+
+                <section class="panel">
+
+                    <h3>Resumen de tu pedido</h3>
+
+                    {% for producto in productos %}
+
+                        <div class="producto">
+
+                            <img
+                                src="{{ url_for('static', filename='img/' + producto.imagen) }}"
+                                alt="{{ producto.nombre }}"
+                            >
+
+                            <div class="producto-info">
+
+                                <h4>{{ producto.nombre }}</h4>
+
+                                <p>
+                                    Cantidad: {{ producto.cantidad }}
+                                </p>
+
+                                <p>
+                                    Precio: ${{ "%.2f"|format(producto.precio) }}
+                                </p>
+
+                            </div>
+
+                            <span class="subtotal">
+                                ${{ "%.2f"|format(producto.subtotal) }}
+                            </span>
+
+                        </div>
+
+                    {% endfor %}
+
+                    <div class="total">
+
+                        <span>Total a pagar:</span>
+
+                        <strong>
+                            ${{ "%.2f"|format(total) }}
+                        </strong>
+
+                    </div>
+
+                    <div class="pago">
+
+                        <h4>Pago contra entrega</h4>
+
+                        <p>
+                            Pagarás tu pedido cuando lo recibas.
+                            No necesitas realizar ningún pago por
+                            adelantado.
+                        </p>
+
+                    </div>
+
+                    <div class="botones">
+
+                        <button
+                            type="submit"
+                            class="boton confirmar"
+                        >
+                            Confirmar pedido
+                        </button>
+
+                        <a
+                            href="{{ url_for('ver_carrito') }}"
+                            class="boton volver"
+                        >
+                            Volver al carrito
+                        </a>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+        </form>
+
+    </main>
+
+    <footer>
+        © 2026 MUNDO INFORMÁTICO. Todos los derechos reservados.
+    </footer>
+
+</body>
+</html>
