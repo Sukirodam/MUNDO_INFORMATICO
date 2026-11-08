@@ -8,6 +8,12 @@
     <title>MUNDO INFORMÁTICO | Tecnología</title>
     <meta name="description" content="Descubre laptops, periféricos, componentes y accesorios tecnológicos en MUNDO INFORMÁTICO.">
 
+    <link
+        rel="icon"
+        type="image/jpeg"
+        href="{{ url_for('static', filename='img/logo.jpeg') }}"
+    >
+
     <style>
         * {
             box-sizing: border-box;
@@ -364,6 +370,102 @@
             line-height: 1.8;
         }
 
+        /* ==========================================
+           SECCIÓN NUESTRO EQUIPO
+        ========================================== */
+
+        .equipo {
+            padding: 55px 6%;
+            background: linear-gradient(180deg, #0b1020, #111a30);
+            text-align: center;
+        }
+
+        .equipo h2 {
+            margin: 0;
+            color: var(--texto);
+            font-size: 30px;
+        }
+
+        .equipo-introduccion {
+            max-width: 750px;
+            margin: 15px auto 35px;
+            color: var(--texto-secundario);
+            line-height: 1.8;
+        }
+
+        .equipo-grid {
+            display: grid;
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(min(100%, 230px), 1fr)
+            );
+            gap: 24px;
+            max-width: 1150px;
+            margin: auto;
+        }
+
+        .miembro {
+            overflow: hidden;
+            padding: 18px;
+            border: 1px solid var(--borde);
+            border-radius: 15px;
+            background: var(--panel);
+            transition: transform .25s, border-color .25s,
+                        box-shadow .25s;
+        }
+
+        .miembro:hover {
+            transform: translateY(-7px);
+            border-color: var(--azul);
+            box-shadow: 0 10px 30px #1689df20;
+        }
+
+        .miembro-imagen {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 220px;
+            overflow: hidden;
+            border: 1px solid var(--borde);
+            border-radius: 12px;
+            background: linear-gradient(135deg, #17233d, #25245c);
+        }
+
+        .miembro-imagen img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .imagen-placeholder {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 15px;
+            color: var(--texto-secundario);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .miembro h3 {
+            margin: 20px 0 10px;
+            color: var(--azul);
+            font-size: 17px;
+            line-height: 1.5;
+        }
+
+        .miembro-cargo {
+            margin: 0;
+            color: var(--texto-secundario);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
         footer {
             padding: 25px 6%;
             border-top: 1px solid var(--borde);
@@ -443,8 +545,6 @@
             font-size: 20px;
         }
 
-        /* DISTRIBUCIÓN DEL PERSONAJE Y CONVERSACIÓN */
-
         .chatbot-cuerpo {
             display: grid;
             grid-template-columns: 135px minmax(0, 1fr);
@@ -452,8 +552,6 @@
             min-height: 0;
             overflow: hidden;
         }
-
-        /* PERSONAJE */
 
         .chatbot-personaje {
             display: flex;
@@ -490,8 +588,6 @@
             line-height: 1.5;
         }
 
-        /* CUANDO TODAVÍA NO HAY IMAGEN */
-
         .personaje-placeholder {
             display: none;
             width: 100%;
@@ -509,8 +605,6 @@
         .chatbot-personaje.sin-imagen .personaje-placeholder {
             display: flex;
         }
-
-        /* ÁREA DE CONVERSACIÓN */
 
         .chatbot-contenido {
             display: flex;
@@ -624,6 +718,14 @@
                 font-size: 23px;
             }
 
+            .equipo {
+                padding: 40px 5%;
+            }
+
+            .equipo h2 {
+                font-size: 25px;
+            }
+
             #chatbot-ventana {
                 right: 15px;
                 width: calc(100vw - 30px);
@@ -633,6 +735,10 @@
         /* CELULARES */
 
         @media (max-width: 450px) {
+            .miembro-imagen {
+                height: 200px;
+            }
+
             #chatbot-boton {
                 right: 15px;
                 bottom: 15px;
@@ -692,13 +798,6 @@
         }
     </style>
 </head>
-<title>MUNDO INFORMÁTICO | Tecnología</title>
-
-<link
-    rel="icon"
-    type="image/jpeg"
-    href="{{ url_for('static', filename='img/logo.jpeg') }}"
->
 
 <body>
 
@@ -958,6 +1057,145 @@
             Encuentra equipos, componentes y accesorios para tus
             actividades escolares, profesionales y de entretenimiento.
         </p>
+
+    </section>
+
+    <!-- ==========================================
+         NUESTRO EQUIPO DE DESARROLLO
+    ========================================== -->
+
+    <section id="equipo" class="equipo">
+
+        <h2>Nuestro equipo</h2>
+
+        <p class="equipo-introduccion">
+            Somos un equipo de cuatro integrantes comprometidos con
+            el desarrollo tecnológico, el diseño y la creación de
+            soluciones digitales. Cada integrante aporta sus
+            conocimientos y habilidades para construir una
+            experiencia funcional, accesible y agradable para
+            nuestros usuarios.
+        </p>
+
+        <div class="equipo-grid">
+
+            <!-- INTEGRANTE 1 -->
+
+            <article class="miembro">
+
+                <div class="miembro-imagen">
+
+                    <img
+                        src="{{ url_for('static', filename='img/equipo/sukiro.jpg') }}"
+                        alt="Fotografía o avatar de Anthony Emmanuel Perez de la Cruz"
+                        loading="lazy"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    >
+
+                    <div class="imagen-placeholder">
+                        Imagen de Sukiro
+                    </div>
+
+                </div>
+
+                <h3>
+                    ANTHONY EMMANUEL PEREZ DE LA CRUZ "SUKIRO"
+                </h3>
+
+                <p class="miembro-cargo">
+                    Desarrollador principal y líder del proyecto.
+                </p>
+
+            </article>
+
+            <!-- INTEGRANTE 2 -->
+
+            <article class="miembro">
+
+                <div class="miembro-imagen">
+
+                    <img
+                        src="{{ url_for('static', filename='img/equipo/melani.png') }}"
+                        alt="Fotografía o avatar de Melani Elizabet Hernandez Mejia"
+                        loading="lazy"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    >
+
+                    <div class="imagen-placeholder">
+                        Imagen de Melani
+                    </div>
+
+                </div>
+
+                <h3>
+                    MELANI ELIZABET HERNANDEZ MEJIA
+                </h3>
+
+                <p class="miembro-cargo">
+                    Diseñadora gráfica y responsable de identidad visual.
+                </p>
+
+            </article>
+
+            <!-- INTEGRANTE 3 -->
+
+            <article class="miembro">
+
+                <div class="miembro-imagen">
+
+                    <img
+                        src="{{ url_for('static', filename='img/equipo/jose_angel.png') }}"
+                        alt="Fotografía o avatar de Jose Angel Yac Puac"
+                        loading="lazy"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    >
+
+                    <div class="imagen-placeholder">
+                        Imagen de José Ángel
+                    </div>
+
+                </div>
+
+                <h3>
+                    JOSE ANGEL YAC PUAC
+                </h3>
+
+                <p class="miembro-cargo">
+                    Desarrollador del sistema de atención y soporte al cliente.
+                </p>
+
+            </article>
+
+            <!-- INTEGRANTE 4 -->
+
+            <article class="miembro">
+
+                <div class="miembro-imagen">
+
+                    <img
+                        src="{{ url_for('static', filename='img/equipo/oliver.png') }}"
+                        alt="Fotografía o avatar de Oliver Dovereyne Jacobo Lopez"
+                        loading="lazy"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    >
+
+                    <div class="imagen-placeholder">
+                        Imagen de Oliver
+                    </div>
+
+                </div>
+
+                <h3>
+                    OLIVER DOVEREYNE JACOBO LOPEZ
+                </h3>
+
+                <p class="miembro-cargo">
+                    Desarrollador del sistema de atención y soporte al cliente.
+                </p>
+
+            </article>
+
+        </div>
 
     </section>
 
