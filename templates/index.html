@@ -981,29 +981,23 @@
 
                             {% endif %}
 
-                            <form
-                                class="form-carrito"
-                                action="{{ url_for('agregar_carrito', id_producto=producto.id_producto) }}"
-                                method="POST"
-                            >
+<form
+    class="form-carrito"
+    action="{{ url_for('agregar_carrito', id_producto=producto.id_producto) }}"
+    method="POST"
+>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                                <button
-                                    type="submit"
-                                    class="boton-carrito"
-                                    {% if producto.existencia | int <= 0 %}
-                                        disabled
-                                    {% endif %}
-                                >
-
-                                    {% if producto.existencia | int > 0 %}
-                                        Agregar al carrito
-                                    {% else %}
-                                        Producto agotado
-                                    {% endif %}
-
-                                </button>
-
-                            </form>
+    <button
+        type="submit"
+        class="boton-carrito"
+        {% if producto.existencia | int <= 0 %}
+            disabled
+        {% endif %}
+    >
+        Agregar al carrito
+    </button>
+</form>
 
                         </div>
 
