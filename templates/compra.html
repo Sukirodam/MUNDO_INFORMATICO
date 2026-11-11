@@ -335,6 +335,7 @@
         {% endwith %}
 
         <form action="{{ url_for('confirmar_pedido') }}" method="POST">
+
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="contenido">
@@ -377,65 +378,40 @@
                                 name="lada_pais"
                                 required
                             >
-
-                                <option value="+52" selected>
-                                    🇲🇽 México (+52)
-                                </option>
-
-                                <option value="+1">
-                                    🇺🇸 Estados Unidos (+1)
-                                </option>
-
-                                <option value="+1">
-                                    🇨🇦 Canadá (+1)
-                                </option>
-
-                                <option value="+502">
-                                    🇬🇹 Guatemala (+502)
-                                </option>
-
-                                <option value="+34">
-                                    🇪🇸 España (+34)
-                                </option>
-
-                                <option value="+57">
-                                    🇨🇴 Colombia (+57)
-                                </option>
-
-                                <option value="+54">
-                                    🇦🇷 Argentina (+54)
-                                </option>
-
+                                <option value="+52" selected>🇲🇽 México (+52)</option>
+                                <option value="+1">🇺🇸 Estados Unidos (+1)</option>
+                                <option value="+1">🇨🇦 Canadá (+1)</option>
+                                <option value="+502">🇬🇹 Guatemala (+502)</option>
+                                <option value="+34">🇪🇸 España (+34)</option>
+                                <option value="+57">🇨🇴 Colombia (+57)</option>
+                                <option value="+54">🇦🇷 Argentina (+54)</option>
                             </select>
 
-                    
-<input
-    type="tel"
-    id="telefono_contacto"
-    name="telefono_contacto"
-    inputmode="numeric"
-    pattern="[0-9]{1,10}"
-    maxlength="10"
-    placeholder="Número telefónico"
-    title="Introduce un máximo de 10 dígitos."
-    oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)"
-    required
->
-
+                            <input
+                                type="tel"
+                                id="telefono_contacto"
+                                name="telefono_contacto"
+                                inputmode="numeric"
+                                pattern="[0-9]{1,10}"
+                                maxlength="10"
+                                placeholder="Número telefónico"
+                                title="Introduce un máximo de 10 dígitos."
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)"
+                                required
+                            >
 
                         </div>
 
-                        
-<p class="ayuda-telefono">
-    Selecciona tu país e introduce tu número telefónico
-    de máximo 10 dígitos, sin incluir la lada internacional.
-</p>
+                        <p class="ayuda-telefono">
+                            Selecciona tu país e introduce tu número telefónico
+                            de máximo 10 dígitos, sin incluir la lada internacional.
+                        </p>
 
                     </div>
 
                     <div class="campo">
                         <label for="direccion_entrega">
-                            Dirección completa
+                            Dirección de entrega
                             <span class="obligatorio">*</span>
                         </label>
 
@@ -457,7 +433,7 @@
                             id="referencias"
                             name="referencias"
                             maxlength="500"
-                            placeholder="Indicaciones para localizar tu domicilio (opcional)"
+                            placeholder="Indicaciones para encontrar tu domicilio (opcional)"
                         ></textarea>
                     </div>
 
