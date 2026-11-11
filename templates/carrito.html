@@ -195,6 +195,7 @@
                     <form
                         action="{{ url_for('actualizar_carrito', id_producto=producto.id_producto) }}"
                         method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <label>Cantidad:</label>
 
@@ -218,6 +219,7 @@
                         <form
                             action="{{ url_for('eliminar_carrito', id_producto=producto.id_producto) }}"
                             method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                             <button type="submit" class="eliminar">
                                 Eliminar
@@ -241,6 +243,7 @@
 
             <form action="{{ url_for('vaciar_carrito') }}"
                   method="POST">
+                    <<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <button type="submit" class="eliminar">
                     Vaciar carrito

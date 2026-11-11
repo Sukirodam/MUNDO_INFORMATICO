@@ -205,6 +205,7 @@
                     <td>
                         <form method="POST"
                               action="{{ url_for('admin_actualizar_existencias', id_producto=producto.id_producto) }}">
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                             <input type="number"
                                    name="cantidad"
@@ -234,6 +235,7 @@
                     <td>
                         <form method="POST"
                               action="{{ url_for('admin_cambiar_estado_producto', id_producto=producto.id_producto) }}">
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                             {% if producto.activo %}
                                 <button class="boton rojo" type="submit">

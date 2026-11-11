@@ -235,6 +235,7 @@
                 <form method="POST"
                       action="{{ url_for('admin_actualizar_estado', id_pedido=pedido.id_pedido) }}"
                       onsubmit="return confirm('¿Confirmas este pedido? Después no podrá modificarse ni cancelarse.');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <input type="hidden" name="estado" value="confirmado">
 
@@ -248,6 +249,7 @@
                 <form method="POST"
                       action="{{ url_for('admin_actualizar_estado', id_pedido=pedido.id_pedido) }}"
                       onsubmit="return confirm('¿Estás seguro de cancelar este pedido? Las existencias serán devueltas al inventario.');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <input type="hidden" name="estado" value="cancelado">
 

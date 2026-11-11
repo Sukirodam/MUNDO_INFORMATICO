@@ -108,6 +108,7 @@
 
     <form method="POST"
           action="{% if producto %}{{ url_for('admin_editar_producto', id_producto=producto.id_producto) }}{% else %}{{ url_for('admin_nuevo_producto') }}{% endif %}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <label>Nombre del producto</label>
         <input type="text"

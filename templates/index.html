@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -1394,19 +1395,24 @@
 
             try {
 
-                const respuesta = await fetch("/chatbot", {
+               const csrfToken = document.querySelector(
+    'meta[name="csrf-token"]'
+).getAttribute("content");
 
-                    method: "POST",
+const respuesta = await fetch("/chatbot", {
 
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+    method: "POST",
 
-                    body: JSON.stringify({
-                        mensaje: pregunta
-                    })
+    headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken
+    },
 
-                });
+    body: JSON.stringify({
+        mensaje: pregunta
+    })
+
+});
 
                 const datos = await respuesta.json();
 

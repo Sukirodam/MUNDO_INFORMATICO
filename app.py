@@ -3,7 +3,7 @@ from flask import (
     Flask, render_template, request,
     redirect, url_for, session, flash, jsonify
 )
-
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import (
     generate_password_hash,
     check_password_hash
@@ -26,9 +26,18 @@ load_dotenv()
 # ==========================================
 
 app = Flask(__name__)
+
+app.secret_key = os.getenv("FLASK_SECRET_KEY")
+
+if not app.secret_key:
+    raise RuntimeError(
+        "Falta configurar FLASK_SECRET_KEY en el archivo .env"
+    )
+
+csrf = CSRFProtect(app)
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
-app.secret_key = os.getenv("FLASK_SECRET_KEY")
 
 
 
@@ -1303,6 +1312,7 @@ def finalizar_compra():
 # CONFIRMAR Y REGISTRAR PEDIDO
 # ==========================================
 
+
 @app.route("/confirmar-pedido", methods=["POST"])
 def confirmar_pedido():
 
@@ -1317,17 +1327,40 @@ def confirmar_pedido():
         return redirect(url_for("ver_carrito"))
 
     nombre = request.form.get("nombre_receptor", "").strip()
+    lada = request.form.get("lada_pais", "").strip()
     telefono = request.form.get("telefono_contacto", "").strip()
     direccion = request.form.get("direccion_entrega", "").strip()
     referencias = request.form.get("referencias", "").strip()
+
+    # Ladas permitidas en el formulario.
+    ladas_permitidas = {
+        "+52", "+1", "+502", "+34", "+57", "+54"
+    }
 
     if not nombre or not telefono or not direccion:
         flash("Completa todos los datos obligatorios.")
         return redirect(url_for("finalizar_compra"))
 
+    # Validar lada internacional.
+    if lada not in ladas_permitidas:
+        flash("Selecciona una lada internacional válida.")
+        return redirect(url_for("finalizar_compra"))
+
+    # Validar que el teléfono tenga únicamente dígitos.
+    if (
+        not telefono.isascii()
+        or not telefono.isdecimal()
+        or not 1 <= len(telefono) <= 10
+    ):
+        flash("El teléfono debe contener entre 1 y 10 dígitos.")
+        return redirect(url_for("finalizar_compra"))
+
+    # Combinar lada internacional y número telefónico.
+    telefono_completo = f"{lada} {telefono}"
+
     if (
         len(nombre) > 150
-        or len(telefono) > 20
+        or len(telefono_completo) > 20
         or len(direccion) > 500
         or len(referencias) > 500
     ):
@@ -1412,7 +1445,7 @@ def confirmar_pedido():
             session["usuario_id"],
             total,
             nombre,
-            telefono,
+            telefono_completo,
             direccion,
             referencias
         ))
