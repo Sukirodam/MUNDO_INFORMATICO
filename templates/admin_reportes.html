@@ -1,0 +1,803 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Reportes | MUNDO INFORMÁTICO</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #101827;
+            color: white;
+            padding: 30px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #38bdf8;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+        }
+
+        nav a:hover {
+            color: #38bdf8;
+        }
+
+        .seccion {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            color: #38bdf8;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            color: #cbd5e1;
+        }
+
+        .filtros {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        .campo {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #475569;
+            border-radius: 7px;
+            background: #101827;
+            color: white;
+            outline: none;
+        }
+
+        input:focus, select:focus {
+            border-color: #38bdf8;
+        }
+
+        .boton {
+            display: inline-block;
+            padding: 11px 16px;
+            background: #0284c7;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            text-decoration: none;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .boton:hover {
+            background: #0369a1;
+        }
+
+        .boton-secundario {
+            background: #475569;
+        }
+
+        .boton-secundario:hover {
+            background: #334155;
+        }
+
+        .estadisticas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 20px;
+        }
+
+        .tarjeta {
+            background: #101827;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 22px;
+        }
+
+        .tarjeta h3 {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .tarjeta p {
+            color: #38bdf8;
+            font-size: 27px;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+        }
+
+        .tarjeta .no-disponible {
+            color: #fbbf24;
+            font-size: 20px;
+        }
+
+        .controles-vista {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 22px;
+        }
+
+        .controles-vista button.activo {
+            background: #7c3aed;
+        }
+
+        .grafica {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .barra-info {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .barra-producto {
+            width: 100%;
+            height: 17px;
+            background: #334155;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .barra-relleno {
+            height: 100%;
+            background: linear-gradient(90deg, #0284c7, #8b5cf6);
+            border-radius: 20px;
+            min-width: 2px;
+        }
+
+        .tabla-contenedor {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 600px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 14px;
+            border-bottom: 1px solid #334155;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        th {
+            color: #38bdf8;
+            white-space: nowrap;
+        }
+
+        td {
+            color: #e2e8f0;
+        }
+
+        tbody tr:hover {
+            background: #263449;
+        }
+
+        .vacio {
+            color: #94a3b8;
+            text-align: center;
+            padding: 25px;
+        }
+
+        .oculto {
+            display: none;
+        }
+
+        .nota {
+            color: #94a3b8;
+            font-size: 13px;
+            margin-top: 15px;
+            line-height: 1.6;
+        }
+
+        .ganancia-no-disponible {
+            color: #fbbf24;
+            font-weight: bold;
+        }
+
+        .ganancia-disponible {
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .separador {
+            margin: 25px 0;
+            border: none;
+            border-top: 1px solid #334155;
+        }
+
+        @media(max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+
+            .seccion {
+                padding: 18px;
+            }
+
+            .tarjeta p {
+                font-size: 23px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div>
+        <h1>MUNDO INFORMÁTICO</h1>
+        <p>Reportes de ventas</p>
+    </div>
+
+    <nav>
+        <a href="{{ url_for('admin') }}">Inicio</a>
+        <a href="{{ url_for('admin_pedidos') }}">Pedidos</a>
+        <a href="{{ url_for('admin_inventario') }}">Inventario</a>
+        <a href="{{ url_for('admin_reportes') }}">Reportes</a>
+        <a href="{{ url_for('admin_historial') }}">Historial</a>
+        <a href="{{ url_for('inicio') }}">Tienda</a>
+        <a href="{{ url_for('logout') }}">Cerrar sesión</a>
+    </nav>
+</header>
+
+<!-- ==========================================
+     FILTROS
+========================================== -->
+
+<section class="seccion">
+
+    <h2>Filtros de búsqueda</h2>
+
+    <form method="GET" action="{{ url_for('admin_reportes') }}">
+
+        <div class="filtros">
+
+            <div class="campo">
+                <label for="mes">Mes</label>
+
+                <select name="mes" id="mes">
+                    <option value="">Todos los meses</option>
+
+                    {% for numero, nombre in [
+                        (1, 'Enero'),
+                        (2, 'Febrero'),
+                        (3, 'Marzo'),
+                        (4, 'Abril'),
+                        (5, 'Mayo'),
+                        (6, 'Junio'),
+                        (7, 'Julio'),
+                        (8, 'Agosto'),
+                        (9, 'Septiembre'),
+                        (10, 'Octubre'),
+                        (11, 'Noviembre'),
+                        (12, 'Diciembre')
+                    ] %}
+                        <option value="{{ numero }}"
+                            {% if mes|string == numero|string %}selected{% endif %}>
+                            {{ nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="anio">Año</label>
+
+                <select name="anio" id="anio">
+                    <option value="">Todos los años</option>
+
+                    {% for anio_opcion in anios_disponibles %}
+                        <option value="{{ anio_opcion }}"
+                            {% if anio|string == anio_opcion|string %}selected{% endif %}>
+                            {{ anio_opcion }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="campo">
+                <label for="q">Buscar producto</label>
+
+                <input
+                    type="search"
+                    name="q"
+                    id="q"
+                    value="{{ busqueda }}"
+                    maxlength="150"
+                    placeholder="Nombre del producto"
+                >
+            </div>
+
+            <div class="campo">
+                <label for="orden">Ordenar resultados</label>
+
+                <select name="orden" id="orden">
+                    <option value="cantidad"
+                        {% if orden == 'cantidad' %}selected{% endif %}>
+                        Más vendidos
+                    </option>
+
+                    <option value="ingresos"
+                        {% if orden == 'ingresos' %}selected{% endif %}>
+                        Mayores ingresos
+                    </option>
+
+                    <option value="nombre"
+                        {% if orden == 'nombre' %}selected{% endif %}>
+                        Nombre
+                    </option>
+                </select>
+            </div>
+
+            <button type="submit" class="boton">
+                Aplicar filtros
+            </button>
+
+            <a href="{{ url_for('admin_reportes') }}"
+               class="boton boton-secundario">
+                Limpiar filtros
+            </a>
+
+        </div>
+    </form>
+
+    <div style="margin-top: 18px;">
+        <a
+            class="boton"
+            href="{{ url_for(
+                'admin_reportes_pdf',
+                mes=mes,
+                anio=anio,
+                q=busqueda,
+                orden=orden
+            ) }}"
+        >
+            Descargar reporte PDF
+        </a>
+    </div>
+
+</section>
+
+<!-- ==========================================
+     RESUMEN GENERAL
+========================================== -->
+
+<section class="seccion">
+
+    <h2>Resumen de ventas</h2>
+
+    <div class="estadisticas">
+
+        <div class="tarjeta">
+            <h3>Pedidos realizados</h3>
+            <p>{{ resumen.total_pedidos }}</p>
+        </div>
+
+        <div class="tarjeta">
+            <h3>Unidades vendidas</h3>
+            <p>{{ resumen.unidades_vendidas }}</p>
+        </div>
+
+        <div class="tarjeta">
+            <h3>Ingresos obtenidos</h3>
+            <p>${{ "%.2f"|format(resumen.ingresos or 0) }}</p>
+        </div>
+
+        <div class="tarjeta">
+            <h3>Ganancias</h3>
+
+            {% if resumen.ganancias is not none %}
+                <p class="ganancia-disponible">
+                    ${{ "%.2f"|format(resumen.ganancias) }}
+                </p>
+            {% else %}
+                <p class="no-disponible">
+                    No disponibles
+                </p>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <p class="nota">
+        Los ingresos corresponden a pedidos pagados, enviados o entregados.
+        Las ganancias solamente se calculan cuando todos los productos
+        vendidos del periodo tienen registrado su costo de adquisición.
+    </p>
+
+    {% if resumen.ventas_sin_costo > 0 %}
+        <p class="nota">
+            Hay {{ resumen.ventas_sin_costo }} registros de productos vendidos
+            sin costo de adquisición. Por ese motivo no se muestra una
+            ganancia estimada.
+        </p>
+    {% endif %}
+
+</section>
+
+<!-- ==========================================
+     PRODUCTOS VENDIDOS
+========================================== -->
+
+<section class="seccion">
+
+    <h2>Productos vendidos</h2>
+
+    <div class="controles-vista">
+
+        <button
+            type="button"
+            class="boton activo"
+            id="boton-grafica"
+            onclick="mostrarVista('grafica')">
+            Ver gráfica
+        </button>
+
+        <button
+            type="button"
+            class="boton boton-secundario"
+            id="boton-listado"
+            onclick="mostrarVista('listado')">
+            Ver listado
+        </button>
+
+    </div>
+
+    {% if productos_vendidos %}
+
+        <!-- GRÁFICA -->
+
+        <div id="vista-grafica" class="grafica">
+
+            {% set max_unidades = productos_vendidos
+                | map(attribute='unidades_vendidas')
+                | max %}
+
+            {% for producto in productos_vendidos %}
+
+                <div>
+
+                    <div class="barra-info">
+                        <strong>{{ producto.producto }}</strong>
+
+                        <span>
+                            {{ producto.unidades_vendidas }} unidades
+                        </span>
+                    </div>
+
+                    <div class="barra-producto">
+
+                        <div
+                            class="barra-relleno"
+                            style="width: {{ (producto.unidades_vendidas / max_unidades * 100) if max_unidades else 0 }}%;">
+                        </div>
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+        <!-- LISTADO -->
+
+        <div id="vista-listado" class="tabla-contenedor oculto">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Unidades vendidas</th>
+                        <th>Ingresos</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for producto in productos_vendidos %}
+
+                    <tr>
+                        <td>{{ producto.producto }}</td>
+
+                        <td>{{ producto.unidades_vendidas }}</td>
+
+                        <td>
+                            ${{ "%.2f"|format(producto.ingresos or 0) }}
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    {% else %}
+
+        <p class="vacio">
+            No se encontraron ventas con los filtros seleccionados.
+        </p>
+
+    {% endif %}
+
+</section>
+
+<!-- ==========================================
+     INGRESOS Y GANANCIAS MENSUALES
+========================================== -->
+
+<section class="seccion">
+
+    <h2>Ingresos y ganancias por mes</h2>
+
+    <p class="nota" style="margin-top: -10px; margin-bottom: 18px;">
+        Este apartado respeta el año y la búsqueda de producto seleccionados.
+        Muestra todos los meses del año, independientemente del filtro de mes.
+    </p>
+
+    {% if ventas_mensuales %}
+
+        <div class="tabla-contenedor">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Año</th>
+                        <th>Mes</th>
+                        <th>Ingresos</th>
+                        <th>Ganancias</th>
+                        <th>Ventas sin costo</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for venta in ventas_mensuales %}
+
+                    <tr>
+                        <td>{{ venta.anio }}</td>
+
+                        <td>
+                            {% set nombres_meses = [
+                                '', 'Enero', 'Febrero', 'Marzo',
+                                'Abril', 'Mayo', 'Junio', 'Julio',
+                                'Agosto', 'Septiembre', 'Octubre',
+                                'Noviembre', 'Diciembre'
+                            ] %}
+
+                            {{ nombres_meses[venta.numero_mes] }}
+                        </td>
+
+                        <td>
+                            ${{ "%.2f"|format(venta.ingresos or 0) }}
+                        </td>
+
+                        <td>
+                            {% if venta.ganancias is not none %}
+                                <span class="ganancia-disponible">
+                                    ${{ "%.2f"|format(venta.ganancias) }}
+                                </span>
+                            {% else %}
+                                <span class="ganancia-no-disponible">
+                                    No disponible
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td>{{ venta.ventas_sin_costo }}</td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    {% else %}
+
+        <p class="vacio">
+            Todavía no existen ventas para mostrar por mes.
+        </p>
+
+    {% endif %}
+
+    <p class="nota">
+        No se calculan ganancias parciales: si un mes tiene al menos una
+        venta sin costo registrado, su ganancia completa aparecerá como
+        no disponible.
+    </p>
+
+</section>
+
+<!-- ==========================================
+     DETALLE DE VENTAS
+========================================== -->
+
+<section class="seccion">
+
+    <h2>Detalle de ventas</h2>
+
+    {% if detalle_ventas %}
+
+        <div class="tabla-contenedor">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Pedido</th>
+                        <th>Fecha</th>
+                        <th>Comprador</th>
+                        <th>Producto</th>
+                        <th>Unidades</th>
+                        <th>Precio unitario</th>
+                        <th>Ingreso</th>
+                        <th>Ganancia</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for venta in detalle_ventas %}
+
+                    <tr>
+
+                        <td>#{{ venta.id_pedido }}</td>
+
+                        <td>
+                            {% if venta.fecha_pedido %}
+                                {{ venta.fecha_pedido.strftime('%d/%m/%Y %H:%M') }}
+                            {% else %}
+                                Sin fecha
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {{ venta.comprador or 'No disponible' }}
+                        </td>
+
+                        <td>{{ venta.producto }}</td>
+
+                        <td>{{ venta.cantidad }}</td>
+
+                        <td>
+                            ${{ "%.2f"|format(venta.precio_unitario) }}
+                        </td>
+
+                        <td>
+                            ${{ "%.2f"|format(venta.subtotal) }}
+                        </td>
+
+                        <td>
+                            {% if venta.ganancia is not none %}
+                                <span class="ganancia-disponible">
+                                    ${{ "%.2f"|format(venta.ganancia) }}
+                                </span>
+                            {% else %}
+                                <span class="ganancia-no-disponible">
+                                    No disponible
+                                </span>
+                            {% endif %}
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    {% else %}
+
+        <p class="vacio">
+            No se encontraron ventas con los filtros seleccionados.
+        </p>
+
+    {% endif %}
+
+    <p class="nota">
+        El detalle muestra cada producto vendido dentro de su pedido.
+        Los pedidos pendientes o cancelados no se incluyen como ventas.
+    </p>
+
+</section>
+
+<script>
+
+    function mostrarVista(vista) {
+
+        const grafica = document.getElementById("vista-grafica");
+        const listado = document.getElementById("vista-listado");
+
+        const botonGrafica = document.getElementById("boton-grafica");
+        const botonListado = document.getElementById("boton-listado");
+
+        if (!grafica || !listado) {
+            return;
+        }
+
+        if (vista === "grafica") {
+
+            grafica.classList.remove("oculto");
+            listado.classList.add("oculto");
+
+            botonGrafica.classList.add("activo");
+            botonListado.classList.remove("activo");
+
+        } else {
+
+            grafica.classList.add("oculto");
+            listado.classList.remove("oculto");
+
+            botonListado.classList.add("activo");
+            botonGrafica.classList.remove("activo");
+
+        }
+    }
+
+</script>
+
+</body>
+</html>

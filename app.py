@@ -1,4 +1,26 @@
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+from reportlab.lib.enums import TA_LEFT
+from reportlab.platypus import LongTable, Image
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from io import BytesIO
+from xml.sax.saxutils import escape
 
+from flask import send_file
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle
+)
 from flask import (
     Flask, render_template, request,
     redirect, url_for, session, flash, jsonify
@@ -148,13 +170,25 @@ def admin_nuevo_producto():
             descripcion = request.form.get("descripcion", "").strip()
             imagen = request.form.get("imagen", "").strip()
 
+            costo_texto = request.form.get(
+                "costo_compra", ""
+            ).strip()
+
             try:
                 id_categoria = int(request.form.get("id_categoria", ""))
                 precio = Decimal(request.form.get("precio", ""))
                 existencia = int(request.form.get("existencia", ""))
 
+                # El costo puede quedar vacío temporalmente.
+                costo_compra = (
+                    Decimal(costo_texto)
+                    if costo_texto
+                    else None
+                )
+
             except (ValueError, InvalidOperation):
-                flash("Introduce una categoría, precio y existencia válidos.")
+                flash("Introduce valores válidos para el producto.")
+
                 return render_template(
                     "admin_producto_form.html",
                     producto=None,
@@ -173,8 +207,21 @@ def admin_nuevo_producto():
             elif len(imagen) > 1000:
                 flash("La dirección de imagen es demasiado larga.")
 
-            elif precio < 0:
-                flash("El precio no puede ser negativo.")
+            elif precio < 0 or precio > Decimal("99999999.99"):
+                flash("El precio debe estar entre 0 y 99,999,999.99.")
+
+            elif (
+                costo_compra is not None
+                and (
+                    costo_compra < 0
+                    or costo_compra > Decimal("99999999.99")
+                    or costo_compra.as_tuple().exponent < -2
+                )
+            ):
+                flash(
+                    "El costo de compra debe ser válido, "
+                    "positivo y tener máximo dos decimales."
+                )
 
             elif existencia < 0:
                 flash("Las existencias no pueden ser negativas.")
@@ -195,16 +242,18 @@ def admin_nuevo_producto():
                         nombre,
                         descripcion,
                         precio,
+                        costo_compra,
                         existencia,
                         imagen,
                         activo
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, TRUE)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)
                 """, (
                     id_categoria,
                     nombre,
                     descripcion,
                     precio,
+                    costo_compra,
                     existencia,
                     imagen or None
                 ))
@@ -266,6 +315,7 @@ def admin_nuevo_producto():
 # MODIFICAR PRODUCTO
 # ==========================================
 
+
 @app.route(
     "/admin/producto/<int:id_producto>/editar",
     methods=["GET", "POST"]
@@ -306,12 +356,22 @@ def admin_editar_producto(id_producto):
             descripcion = request.form.get("descripcion", "").strip()
             imagen = request.form.get("imagen", "").strip()
 
+            costo_texto = request.form.get(
+                "costo_compra", ""
+            ).strip()
+
             try:
                 id_categoria = int(request.form.get("id_categoria", ""))
                 precio = Decimal(request.form.get("precio", ""))
 
+                costo_compra = (
+                    Decimal(costo_texto)
+                    if costo_texto
+                    else None
+                )
+
             except (ValueError, InvalidOperation):
-                flash("Introduce una categoría y un precio válidos.")
+                flash("Introduce valores válidos para el producto.")
 
                 return render_template(
                     "admin_producto_form.html",
@@ -331,8 +391,24 @@ def admin_editar_producto(id_producto):
             elif len(imagen) > 1000:
                 flash("La dirección de imagen es demasiado larga.")
 
-            elif precio < 0:
-                flash("El precio no puede ser negativo.")
+            elif (
+                precio < 0
+                or precio > Decimal("99999999.99")
+            ):
+                flash("El precio debe estar entre 0 y 99,999,999.99.")
+
+            elif (
+                costo_compra is not None
+                and (
+                    costo_compra < 0
+                    or costo_compra > Decimal("99999999.99")
+                    or costo_compra.as_tuple().exponent < -2
+                )
+            ):
+                flash(
+                    "El costo de compra debe ser válido, "
+                    "positivo y tener máximo dos decimales."
+                )
 
             elif id_categoria not in [
                 categoria["id_categoria"] for categoria in categorias
@@ -348,6 +424,7 @@ def admin_editar_producto(id_producto):
                         nombre = %s,
                         descripcion = %s,
                         precio = %s,
+                        costo_compra = %s,
                         imagen = %s
                     WHERE id_producto = %s
                 """, (
@@ -355,6 +432,7 @@ def admin_editar_producto(id_producto):
                     nombre,
                     descripcion,
                     precio,
+                    costo_compra,
                     imagen or None,
                     id_producto
                 ))
@@ -689,6 +767,1237 @@ def admin_historial():
         if conexion is not None and conexion.is_connected():
             conexion.close()
 
+
+
+@app.route("/admin/reportes")
+@administrador_requerido
+def admin_reportes():
+
+    conexion = None
+    cursor = None
+
+    try:
+        conexion = obtener_conexion()
+        cursor = conexion.cursor(dictionary=True)
+
+        # ==========================================
+        # FILTROS
+        # ==========================================
+
+        mes = request.args.get("mes", "").strip()
+        anio = request.args.get("anio", "").strip()
+        busqueda = request.args.get("q", "").strip()
+        orden = request.args.get("orden", "cantidad").strip()
+
+        if mes and (not mes.isdigit() or not 1 <= int(mes) <= 12):
+            mes = ""
+
+        if anio and (not anio.isdigit() or not 2000 <= int(anio) <= 2100):
+            anio = ""
+
+        if orden not in ("cantidad", "ingresos", "nombre"):
+            orden = "cantidad"
+
+        # ==========================================
+        # CONDICIONES PARA PRODUCTOS Y DETALLE
+        # ==========================================
+
+        condiciones = [
+            "p.estado IN ('pagado', 'enviado', 'entregado')"
+        ]
+
+        parametros = []
+
+        if mes:
+            condiciones.append("MONTH(p.fecha_pedido) = %s")
+            parametros.append(int(mes))
+
+        if anio:
+            condiciones.append("YEAR(p.fecha_pedido) = %s")
+            parametros.append(int(anio))
+
+        if busqueda:
+            condiciones.append("pr.nombre LIKE %s")
+            parametros.append(f"%{busqueda}%")
+
+        where = " AND ".join(condiciones)
+
+        # ==========================================
+        # ORDENAMIENTO
+        # ==========================================
+
+        ordenamientos = {
+            "cantidad": "unidades_vendidas DESC",
+            "ingresos": "ingresos DESC",
+            "nombre": "producto ASC"
+        }
+
+        orden_sql = ordenamientos[orden]
+
+        # ==========================================
+        # PRODUCTOS VENDIDOS
+        # ==========================================
+
+        cursor.execute(f"""
+            SELECT
+                pr.id_producto,
+                pr.nombre AS producto,
+
+                COALESCE(
+                    SUM(dp.cantidad),
+                    0
+                ) AS unidades_vendidas,
+
+                COALESCE(
+                    SUM(dp.cantidad * dp.precio_unitario),
+                    0
+                ) AS ingresos
+
+            FROM detalle_pedido AS dp
+
+            INNER JOIN pedidos AS p
+                ON dp.id_pedido = p.id_pedido
+
+            INNER JOIN productos AS pr
+                ON dp.id_producto = pr.id_producto
+
+            WHERE {where}
+
+            GROUP BY
+                pr.id_producto,
+                pr.nombre
+
+            ORDER BY {orden_sql}
+        """, tuple(parametros))
+
+        productos_vendidos = cursor.fetchall()
+
+        # ==========================================
+        # RESUMEN GENERAL
+        # ==========================================
+
+        condiciones_resumen = [
+            "p.estado IN ('pagado', 'enviado', 'entregado')"
+        ]
+
+        parametros_resumen = []
+
+        if mes:
+            condiciones_resumen.append("MONTH(p.fecha_pedido) = %s")
+            parametros_resumen.append(int(mes))
+
+        if anio:
+            condiciones_resumen.append("YEAR(p.fecha_pedido) = %s")
+            parametros_resumen.append(int(anio))
+
+        where_resumen = " AND ".join(condiciones_resumen)
+
+        cursor.execute(f"""
+            SELECT
+                COUNT(DISTINCT p.id_pedido) AS total_pedidos,
+
+                COALESCE(
+                    SUM(dp.cantidad),
+                    0
+                ) AS unidades_vendidas,
+
+                COALESCE(
+                    SUM(dp.cantidad * dp.precio_unitario),
+                    0
+                ) AS ingresos,
+
+                CASE
+                    WHEN SUM(
+                        CASE
+                            WHEN dp.id_detalle IS NOT NULL
+                                 AND dp.costo_unitario IS NULL
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) > 0
+                    THEN NULL
+
+                    ELSE COALESCE(
+                        SUM(
+                            dp.cantidad *
+                            (dp.precio_unitario - dp.costo_unitario)
+                        ),
+                        0
+                    )
+                END AS ganancias,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN dp.id_detalle IS NOT NULL
+                                 AND dp.costo_unitario IS NULL
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS ventas_sin_costo
+
+            FROM pedidos AS p
+
+            LEFT JOIN detalle_pedido AS dp
+                ON p.id_pedido = dp.id_pedido
+
+            WHERE {where_resumen}
+        """, tuple(parametros_resumen))
+
+        resumen = cursor.fetchone()
+
+        # ==========================================
+        # INGRESOS Y GANANCIAS MENSUALES
+        # ==========================================
+        # Esta consulta respeta el año y la búsqueda
+        # del producto, pero muestra todos los meses.
+        # El filtro de mes no se aplica aquí.
+
+        condiciones_mensuales = [
+            "p.estado IN ('pagado', 'enviado', 'entregado')"
+        ]
+
+        parametros_mensuales = []
+
+        if anio:
+            condiciones_mensuales.append("YEAR(p.fecha_pedido) = %s")
+            parametros_mensuales.append(int(anio))
+
+        if busqueda:
+            condiciones_mensuales.append("pr.nombre LIKE %s")
+            parametros_mensuales.append(f"%{busqueda}%")
+
+        where_mensual = " AND ".join(condiciones_mensuales)
+
+        cursor.execute(f"""
+            SELECT
+                YEAR(p.fecha_pedido) AS anio,
+                MONTH(p.fecha_pedido) AS numero_mes,
+
+                COALESCE(
+                    SUM(dp.cantidad * dp.precio_unitario),
+                    0
+                ) AS ingresos,
+
+                CASE
+                    WHEN SUM(
+                        CASE
+                            WHEN dp.costo_unitario IS NULL THEN 1
+                            ELSE 0
+                        END
+                    ) > 0
+                    THEN NULL
+
+                    ELSE COALESCE(
+                        SUM(
+                            dp.cantidad *
+                            (dp.precio_unitario - dp.costo_unitario)
+                        ),
+                        0
+                    )
+                END AS ganancias,
+
+                SUM(
+                    CASE
+                        WHEN dp.costo_unitario IS NULL THEN 1
+                        ELSE 0
+                    END
+                ) AS ventas_sin_costo
+
+            FROM detalle_pedido AS dp
+
+            INNER JOIN pedidos AS p
+                ON dp.id_pedido = p.id_pedido
+
+            INNER JOIN productos AS pr
+                ON dp.id_producto = pr.id_producto
+
+            WHERE {where_mensual}
+
+            GROUP BY
+                YEAR(p.fecha_pedido),
+                MONTH(p.fecha_pedido)
+
+            ORDER BY
+                anio ASC,
+                numero_mes ASC
+        """, tuple(parametros_mensuales))
+
+        ventas_mensuales = cursor.fetchall()
+
+        # ==========================================
+        # DETALLE DE VENTAS Y COMPRADORES
+        # ==========================================
+
+        cursor.execute(f"""
+            SELECT
+                p.id_pedido,
+                p.fecha_pedido,
+                u.nombre AS comprador,
+                pr.nombre AS producto,
+                dp.cantidad,
+                dp.precio_unitario,
+                dp.costo_unitario,
+
+                (
+                    dp.cantidad * dp.precio_unitario
+                ) AS subtotal,
+
+                CASE
+                    WHEN dp.costo_unitario IS NULL
+                    THEN NULL
+
+                    ELSE (
+                        dp.cantidad *
+                        (dp.precio_unitario - dp.costo_unitario)
+                    )
+                END AS ganancia
+
+            FROM detalle_pedido AS dp
+
+            INNER JOIN pedidos AS p
+                ON dp.id_pedido = p.id_pedido
+
+            INNER JOIN productos AS pr
+                ON dp.id_producto = pr.id_producto
+
+            LEFT JOIN usuarios AS u
+                ON p.id_usuario = u.id_usuario
+
+            WHERE {where}
+
+            ORDER BY
+                p.fecha_pedido DESC,
+                p.id_pedido DESC
+        """, tuple(parametros))
+
+        detalle_ventas = cursor.fetchall()
+
+        # ==========================================
+        # AÑOS DISPONIBLES
+        # ==========================================
+
+        cursor.execute("""
+            SELECT DISTINCT YEAR(fecha_pedido) AS anio
+            FROM pedidos
+            WHERE fecha_pedido IS NOT NULL
+            ORDER BY anio DESC
+        """)
+
+        anios_disponibles = [
+            fila["anio"]
+            for fila in cursor.fetchall()
+            if fila["anio"] is not None
+        ]
+
+        # ==========================================
+        # ENVIAR INFORMACIÓN A LA PLANTILLA
+        # ==========================================
+
+        return render_template(
+            "admin_reportes.html",
+            productos_vendidos=productos_vendidos,
+            resumen=resumen,
+            ventas_mensuales=ventas_mensuales,
+            detalle_ventas=detalle_ventas,
+            mes=mes,
+            anio=anio,
+            busqueda=busqueda,
+            orden=orden,
+            anios_disponibles=anios_disponibles
+        )
+
+    except Exception as error:
+
+        print("ERROR AL GENERAR REPORTES:", error)
+        return "No se pudieron generar los reportes.", 500
+
+    finally:
+
+        if cursor is not None:
+            cursor.close()
+
+        if conexion is not None and conexion.is_connected():
+            conexion.close()
+
+
+@app.route("/admin/reportes/pdf")
+@administrador_requerido
+def admin_reportes_pdf():
+
+    conexion = None
+    cursor = None
+
+    try:
+        conexion = obtener_conexion()
+        cursor = conexion.cursor(dictionary=True)
+
+        # ==========================================
+        # FILTROS
+        # ==========================================
+
+        mes = request.args.get("mes", "").strip()
+        anio = request.args.get("anio", "").strip()
+        busqueda = request.args.get("q", "").strip()
+        orden = request.args.get("orden", "cantidad").strip()
+
+        if mes and (not mes.isdigit() or not 1 <= int(mes) <= 12):
+            mes = ""
+
+        if anio and (not anio.isdigit() or not 2000 <= int(anio) <= 2100):
+            anio = ""
+
+        if orden not in ("cantidad", "ingresos", "nombre"):
+            orden = "cantidad"
+
+        nombres_meses = [
+            "",
+            "Enero", "Febrero", "Marzo", "Abril",
+            "Mayo", "Junio", "Julio", "Agosto",
+            "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        ]
+
+        # ==========================================
+        # CONDICIONES GENERALES
+        # ==========================================
+
+        condiciones = [
+            "p.estado IN ('pagado', 'enviado', 'entregado')"
+        ]
+
+        parametros = []
+
+        if mes:
+            condiciones.append("MONTH(p.fecha_pedido) = %s")
+            parametros.append(int(mes))
+
+        if anio:
+            condiciones.append("YEAR(p.fecha_pedido) = %s")
+            parametros.append(int(anio))
+
+        if busqueda:
+            condiciones.append("pr.nombre LIKE %s")
+            parametros.append(f"%{busqueda}%")
+
+        where = " AND ".join(condiciones)
+
+        # ==========================================
+        # ORDENAMIENTO
+        # ==========================================
+
+        ordenamientos = {
+            "cantidad": "unidades_vendidas DESC",
+            "ingresos": "ingresos DESC",
+            "nombre": "producto ASC"
+        }
+
+        orden_sql = ordenamientos[orden]
+
+        # ==========================================
+        # PRODUCTOS VENDIDOS
+        # ==========================================
+
+        cursor.execute(f"""
+            SELECT
+                pr.id_producto,
+                pr.nombre AS producto,
+
+                COALESCE(
+                    SUM(dp.cantidad),
+                    0
+                ) AS unidades_vendidas,
+
+                COALESCE(
+                    SUM(dp.cantidad * dp.precio_unitario),
+                    0
+                ) AS ingresos
+
+            FROM detalle_pedido AS dp
+
+            INNER JOIN pedidos AS p
+                ON dp.id_pedido = p.id_pedido
+
+            INNER JOIN productos AS pr
+                ON dp.id_producto = pr.id_producto
+
+            WHERE {where}
+
+            GROUP BY
+                pr.id_producto,
+                pr.nombre
+
+            ORDER BY {orden_sql}
+        """, tuple(parametros))
+
+        productos_vendidos = cursor.fetchall()
+
+        # ==========================================
+        # RESUMEN GENERAL
+        # ==========================================
+
+        condiciones_resumen = [
+            "p.estado IN ('pagado', 'enviado', 'entregado')"
+        ]
+
+        parametros_resumen = []
+
+        if mes:
+            condiciones_resumen.append("MONTH(p.fecha_pedido) = %s")
+            parametros_resumen.append(int(mes))
+
+        if anio:
+            condiciones_resumen.append("YEAR(p.fecha_pedido) = %s")
+            parametros_resumen.append(int(anio))
+
+        where_resumen = " AND ".join(condiciones_resumen)
+
+        cursor.execute(f"""
+            SELECT
+                COUNT(DISTINCT p.id_pedido) AS total_pedidos,
+
+                COALESCE(
+                    SUM(dp.cantidad),
+                    0
+                ) AS unidades_vendidas,
+
+                COALESCE(
+                    SUM(dp.cantidad * dp.precio_unitario),
+                    0
+                ) AS ingresos,
+
+                CASE
+                    WHEN SUM(
+                        CASE
+                            WHEN dp.id_detalle IS NOT NULL
+                                 AND dp.costo_unitario IS NULL
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) > 0
+                    THEN NULL
+
+                    ELSE COALESCE(
+                        SUM(
+                            dp.cantidad *
+                            (dp.precio_unitario - dp.costo_unitario)
+                        ),
+                        0
+                    )
+                END AS ganancias,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN dp.id_detalle IS NOT NULL
+                                 AND dp.costo_unitario IS NULL
+                            THEN 1
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS ventas_sin_costo
+
+            FROM pedidos AS p
+
+            LEFT JOIN detalle_pedido AS dp
+                ON p.id_pedido = dp.id_pedido
+
+            WHERE {where_resumen}
+        """, tuple(parametros_resumen))
+
+        resumen = cursor.fetchone()
+
+        # ==========================================
+        # INGRESOS Y GANANCIAS MENSUALES
+        # ==========================================
+
+        condiciones_mensuales = [
+            "p.estado IN ('pagado', 'enviado', 'entregado')"
+        ]
+
+        parametros_mensuales = []
+
+        if anio:
+            condiciones_mensuales.append(
+                "YEAR(p.fecha_pedido) = %s"
+            )
+            parametros_mensuales.append(int(anio))
+
+        if busqueda:
+            condiciones_mensuales.append("pr.nombre LIKE %s")
+            parametros_mensuales.append(f"%{busqueda}%")
+
+        where_mensual = " AND ".join(condiciones_mensuales)
+
+        cursor.execute(f"""
+            SELECT
+                YEAR(p.fecha_pedido) AS anio,
+                MONTH(p.fecha_pedido) AS numero_mes,
+
+                COALESCE(
+                    SUM(dp.cantidad * dp.precio_unitario),
+                    0
+                ) AS ingresos,
+
+                CASE
+                    WHEN SUM(
+                        CASE
+                            WHEN dp.costo_unitario IS NULL THEN 1
+                            ELSE 0
+                        END
+                    ) > 0
+                    THEN NULL
+
+                    ELSE COALESCE(
+                        SUM(
+                            dp.cantidad *
+                            (dp.precio_unitario - dp.costo_unitario)
+                        ),
+                        0
+                    )
+                END AS ganancias,
+
+                SUM(
+                    CASE
+                        WHEN dp.costo_unitario IS NULL THEN 1
+                        ELSE 0
+                    END
+                ) AS ventas_sin_costo
+
+            FROM detalle_pedido AS dp
+
+            INNER JOIN pedidos AS p
+                ON dp.id_pedido = p.id_pedido
+
+            INNER JOIN productos AS pr
+                ON dp.id_producto = pr.id_producto
+
+            WHERE {where_mensual}
+
+            GROUP BY
+                YEAR(p.fecha_pedido),
+                MONTH(p.fecha_pedido)
+
+            ORDER BY
+                anio ASC,
+                numero_mes ASC
+        """, tuple(parametros_mensuales))
+
+        ventas_mensuales = cursor.fetchall()
+
+        # ==========================================
+        # DETALLE DE VENTAS
+        # ==========================================
+
+        cursor.execute(f"""
+            SELECT
+                p.id_pedido,
+                p.fecha_pedido,
+                u.nombre AS comprador,
+                pr.nombre AS producto,
+                dp.cantidad,
+                dp.precio_unitario,
+                dp.costo_unitario,
+
+                (
+                    dp.cantidad * dp.precio_unitario
+                ) AS subtotal,
+
+                CASE
+                    WHEN dp.costo_unitario IS NULL
+                    THEN NULL
+
+                    ELSE (
+                        dp.cantidad *
+                        (dp.precio_unitario - dp.costo_unitario)
+                    )
+                END AS ganancia
+
+            FROM detalle_pedido AS dp
+
+            INNER JOIN pedidos AS p
+                ON dp.id_pedido = p.id_pedido
+
+            INNER JOIN productos AS pr
+                ON dp.id_producto = pr.id_producto
+
+            LEFT JOIN usuarios AS u
+                ON p.id_usuario = u.id_usuario
+
+            WHERE {where}
+
+            ORDER BY
+                p.fecha_pedido DESC,
+                p.id_pedido DESC
+        """, tuple(parametros))
+
+        detalle_ventas = cursor.fetchall()
+
+        # ==========================================
+        # PREPARAR DOCUMENTO PDF
+        # ==========================================
+
+        buffer = BytesIO()
+
+        documento = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(A4),
+            rightMargin=12 * mm,
+            leftMargin=12 * mm,
+            topMargin=15 * mm,
+            bottomMargin=17 * mm,
+            title="Reporte de ventas - MUNDO INFORMÁTICO",
+            author="MUNDO INFORMÁTICO"
+        )
+
+        estilos = getSampleStyleSheet()
+
+        estilo_titulo = ParagraphStyle(
+            "TituloTienda",
+            parent=estilos["Title"],
+            fontName="Helvetica-Bold",
+            fontSize=20,
+            leading=24,
+            textColor=colors.HexColor("#0284c7"),
+            alignment=TA_LEFT,
+            spaceAfter=5
+        )
+
+        estilo_subtitulo = ParagraphStyle(
+            "SubtituloTienda",
+            parent=estilos["Normal"],
+            fontSize=10,
+            leading=14,
+            textColor=colors.HexColor("#475569")
+        )
+
+        estilo_seccion = ParagraphStyle(
+            "TituloSeccion",
+            parent=estilos["Heading2"],
+            fontName="Helvetica-Bold",
+            fontSize=13,
+            leading=17,
+            textColor=colors.HexColor("#0369a1"),
+            spaceBefore=12,
+            spaceAfter=8
+        )
+
+        estilo_normal = ParagraphStyle(
+            "TextoNormal",
+            parent=estilos["Normal"],
+            fontSize=9,
+            leading=12,
+            textColor=colors.HexColor("#1e293b")
+        )
+
+        estilo_tabla = ParagraphStyle(
+            "TextoTabla",
+            parent=estilos["Normal"],
+            fontSize=7,
+            leading=9,
+            textColor=colors.HexColor("#1e293b")
+        )
+
+        estilo_tabla_blanco = ParagraphStyle(
+            "TextoTablaBlanco",
+            parent=estilos["Normal"],
+            fontSize=7,
+            leading=9,
+            textColor=colors.white
+        )
+
+        contenido = []
+
+        # ==========================================
+        # LOGO
+        # ==========================================
+
+        carpeta_logo = Path(app.root_path) / "static" / "img"
+
+        archivos_logo = []
+
+        if carpeta_logo.exists():
+
+            archivos_logo = (
+                list(carpeta_logo.glob("*.jpeg")) +
+                list(carpeta_logo.glob("*.jpg")) +
+                list(carpeta_logo.glob("*.JPEG")) +
+                list(carpeta_logo.glob("*.JPG"))
+            )
+
+        logo_path = None
+
+        if archivos_logo:
+
+            logos_con_nombre = [
+                archivo
+                for archivo in archivos_logo
+                if "logo" in archivo.stem.lower()
+            ]
+
+            if logos_con_nombre:
+                logo_path = logos_con_nombre[0]
+
+            elif len(archivos_logo) == 1:
+                logo_path = archivos_logo[0]
+
+        # ==========================================
+        # ENCABEZADO DEL PDF
+        # ==========================================
+
+        zona_mexico = timezone(timedelta(hours=-6))
+        fecha_generacion = datetime.now(zona_mexico)
+
+        nombre_admin = session.get(
+            "usuario_nombre",
+            "Administrador"
+        )
+
+        fecha_texto = fecha_generacion.strftime(
+            "%d/%m/%Y %H:%M"
+        )
+
+        if mes and anio:
+            periodo = f"{nombres_meses[int(mes)]} de {anio}"
+
+        elif mes:
+            periodo = nombres_meses[int(mes)]
+
+        elif anio:
+            periodo = f"Todos los meses de {anio}"
+
+        else:
+            periodo = "Todos los periodos disponibles"
+
+        if busqueda:
+            periodo += f" | Producto: {busqueda}"
+
+        encabezado_texto = [
+            Paragraph(
+                "MUNDO INFORMÁTICO",
+                estilo_titulo
+            ),
+            Paragraph(
+                "REPORTE DE VENTAS",
+                estilo_subtitulo
+            ),
+            Spacer(1, 5),
+            Paragraph(
+                f"<b>Periodo:</b> {escape(periodo)}",
+                estilo_normal
+            ),
+            Paragraph(
+                f"<b>Administrador:</b> {escape(str(nombre_admin))}",
+                estilo_normal
+            ),
+            Paragraph(
+                f"<b>Generado:</b> {fecha_texto}",
+                estilo_normal
+            )
+        ]
+
+        if logo_path:
+
+            imagen_logo = Image(
+                str(logo_path),
+                width=65,
+                height=65
+            )
+
+            encabezado = Table(
+                [[imagen_logo, encabezado_texto]],
+                colWidths=[75, 650]
+            )
+
+        else:
+
+            encabezado = Table(
+                [[encabezado_texto]],
+                colWidths=[725]
+            )
+
+        encabezado.setStyle(
+            TableStyle([
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ("LINEBELOW", (0, 0), (-1, -1), 1, colors.HexColor("#38bdf8"))
+            ])
+        )
+
+        contenido.append(encabezado)
+        contenido.append(Spacer(1, 15))
+
+        # ==========================================
+        # RESUMEN GENERAL
+        # ==========================================
+
+        contenido.append(
+            Paragraph("RESUMEN DE VENTAS", estilo_seccion)
+        )
+
+        ganancias_resumen = (
+            f"${resumen['ganancias']:,.2f}"
+            if resumen["ganancias"] is not None
+            else "No disponibles"
+        )
+
+        datos_resumen = [
+            ["Pedidos realizados", "Unidades vendidas", "Ingresos", "Ganancias"],
+            [
+                str(resumen["total_pedidos"]),
+                str(resumen["unidades_vendidas"]),
+                f"${resumen['ingresos']:,.2f}",
+                ganancias_resumen
+            ]
+        ]
+
+        tabla_resumen = Table(
+            datos_resumen,
+            colWidths=[180, 180, 180, 180]
+        )
+
+        tabla_resumen.setStyle(
+            TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#075985")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#e0f2fe")),
+                ("TEXTCOLOR", (0, 1), (-1, 1), colors.HexColor("#0f172a")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#94a3b8")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#94a3b8")),
+                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10)
+            ])
+        )
+
+        contenido.append(tabla_resumen)
+
+        if resumen["ventas_sin_costo"] > 0:
+
+            contenido.append(Spacer(1, 7))
+
+            contenido.append(
+                Paragraph(
+                    "Nota: existen "
+                    f"{resumen['ventas_sin_costo']} registros de productos "
+                    "vendidos sin costo de adquisición. Por ello, la "
+                    "ganancia total no está disponible.",
+                    estilo_normal
+                )
+            )
+
+        # ==========================================
+        # PRODUCTOS VENDIDOS
+        # ==========================================
+
+        contenido.append(
+            Paragraph("PRODUCTOS VENDIDOS", estilo_seccion)
+        )
+
+        if productos_vendidos:
+
+            datos_productos = [[
+                "Producto",
+                "Unidades vendidas",
+                "Ingresos"
+            ]]
+
+            for producto in productos_vendidos:
+
+                datos_productos.append([
+                    Paragraph(
+                        escape(str(producto["producto"])),
+                        estilo_tabla
+                    ),
+                    str(producto["unidades_vendidas"]),
+                    f"${producto['ingresos']:,.2f}"
+                ])
+
+            tabla_productos = LongTable(
+                datos_productos,
+                colWidths=[390, 150, 180],
+                repeatRows=1
+            )
+
+            tabla_productos.setStyle(
+                TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#075985")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [
+                        colors.white,
+                        colors.HexColor("#f1f5f9")
+                    ]),
+                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 7),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 7)
+                ])
+            )
+
+            contenido.append(tabla_productos)
+
+        else:
+
+            contenido.append(
+                Paragraph(
+                    "No se encontraron productos vendidos en este periodo.",
+                    estilo_normal
+                )
+            )
+
+        # ==========================================
+        # INGRESOS Y GANANCIAS MENSUALES
+        # ==========================================
+
+        contenido.append(
+            Paragraph(
+                "INGRESOS Y GANANCIAS POR MES",
+                estilo_seccion
+            )
+        )
+
+        if ventas_mensuales:
+
+            datos_mensuales = [[
+                "Año",
+                "Mes",
+                "Ingresos",
+                "Ganancias",
+                "Ventas sin costo"
+            ]]
+
+            for venta in ventas_mensuales:
+
+                ganancia = (
+                    f"${venta['ganancias']:,.2f}"
+                    if venta["ganancias"] is not None
+                    else "No disponible"
+                )
+
+                datos_mensuales.append([
+                    str(venta["anio"]),
+                    nombres_meses[venta["numero_mes"]],
+                    f"${venta['ingresos']:,.2f}",
+                    ganancia,
+                    str(venta["ventas_sin_costo"])
+                ])
+
+            tabla_mensual = LongTable(
+                datos_mensuales,
+                colWidths=[90, 150, 160, 190, 130],
+                repeatRows=1
+            )
+
+            tabla_mensual.setStyle(
+                TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#075985")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [
+                        colors.white,
+                        colors.HexColor("#f1f5f9")
+                    ]),
+                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 7),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 7)
+                ])
+            )
+
+            contenido.append(tabla_mensual)
+
+        else:
+
+            contenido.append(
+                Paragraph(
+                    "No existen ventas mensuales para mostrar.",
+                    estilo_normal
+                )
+            )
+
+        # ==========================================
+        # DETALLE DE VENTAS
+        # ==========================================
+
+        contenido.append(
+            Paragraph("DETALLE DE VENTAS Y COMPRADORES", estilo_seccion)
+        )
+
+        if detalle_ventas:
+
+            datos_detalle = [[
+                "Pedido",
+                "Fecha",
+                "Comprador",
+                "Producto",
+                "Cantidad",
+                "Precio unitario",
+                "Ingreso",
+                "Ganancia"
+            ]]
+
+            for venta in detalle_ventas:
+
+                if venta["fecha_pedido"]:
+                    fecha_venta = venta["fecha_pedido"].strftime(
+                        "%d/%m/%Y %H:%M"
+                    )
+                else:
+                    fecha_venta = "Sin fecha"
+
+                ganancia = (
+                    f"${venta['ganancia']:,.2f}"
+                    if venta["ganancia"] is not None
+                    else "No disponible"
+                )
+
+                datos_detalle.append([
+                    f"#{venta['id_pedido']}",
+                    fecha_venta,
+                    Paragraph(
+                        escape(str(venta["comprador"] or "No disponible")),
+                        estilo_tabla
+                    ),
+                    Paragraph(
+                        escape(str(venta["producto"])),
+                        estilo_tabla
+                    ),
+                    str(venta["cantidad"]),
+                    f"${venta['precio_unitario']:,.2f}",
+                    f"${venta['subtotal']:,.2f}",
+                    Paragraph(
+                        escape(ganancia),
+                        estilo_tabla
+                    )
+                ])
+
+            tabla_detalle = LongTable(
+                datos_detalle,
+                colWidths=[
+                    45, 75, 105, 145,
+                    45, 80, 75, 105
+                ],
+                repeatRows=1
+            )
+
+            tabla_detalle.setStyle(
+                TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#075985")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 7),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [
+                        colors.white,
+                        colors.HexColor("#f1f5f9")
+                    ]),
+                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6)
+                ])
+            )
+
+            contenido.append(tabla_detalle)
+
+        else:
+
+            contenido.append(
+                Paragraph(
+                    "No se encontraron ventas para mostrar.",
+                    estilo_normal
+                )
+            )
+
+        # ==========================================
+        # PIE DE PÁGINA
+        # ==========================================
+
+        def agregar_pie_pagina(canvas, documento_pdf):
+
+            canvas.saveState()
+
+            ancho, alto = landscape(A4)
+
+            canvas.setStrokeColor(
+                colors.HexColor("#38bdf8")
+            )
+
+            canvas.setLineWidth(0.7)
+
+            canvas.line(
+                12 * mm,
+                11 * mm,
+                ancho - 12 * mm,
+                11 * mm
+            )
+
+            canvas.setFont("Helvetica", 8)
+
+            canvas.setFillColor(
+                colors.HexColor("#64748b")
+            )
+
+            canvas.drawString(
+                12 * mm,
+                7 * mm,
+                "MUNDO INFORMÁTICO | Reporte administrativo"
+            )
+
+            canvas.drawRightString(
+                ancho - 12 * mm,
+                7 * mm,
+                f"Página {documento_pdf.page}"
+            )
+
+            canvas.restoreState()
+
+        # ==========================================
+        # GENERAR PDF
+        # ==========================================
+
+        documento.build(
+            contenido,
+            onFirstPage=agregar_pie_pagina,
+            onLaterPages=agregar_pie_pagina
+        )
+
+        buffer.seek(0)
+
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name="reporte_mundo_informatico.pdf",
+            mimetype="application/pdf"
+        )
+
+    except Exception as error:
+
+        print("ERROR AL GENERAR REPORTE PDF:", error)
+
+        return "No se pudo generar el reporte PDF.", 500
+
+    finally:
+
+        if cursor is not None:
+            cursor.close()
+
+        if conexion is not None and conexion.is_connected():
+            conexion.close()
 
 # ==========================================
 # INICIO Y CATÁLOGO
@@ -1313,6 +2622,7 @@ def finalizar_compra():
 # ==========================================
 
 
+
 @app.route("/confirmar-pedido", methods=["POST"])
 def confirmar_pedido():
 
@@ -1384,6 +2694,7 @@ def confirmar_pedido():
                 id_producto,
                 nombre,
                 precio,
+                costo_compra,
                 existencia,
                 activo
             FROM productos
@@ -1416,12 +2727,22 @@ def confirmar_pedido():
                 )
 
             precio = Decimal(str(producto["precio"]))
+
+            # Guardar el costo de adquisición del producto.
+            # Si todavía no tiene costo registrado, conservar NULL.
+            costo_compra = (
+                Decimal(str(producto["costo_compra"]))
+                if producto["costo_compra"] is not None
+                else None
+            )
+
             total += precio * cantidad
 
             productos_compra.append({
                 "id_producto": producto["id_producto"],
                 "cantidad": cantidad,
                 "precio": precio,
+                "costo_compra": costo_compra,
                 "existencia_anterior": producto["existencia"],
                 "existencia_nueva": producto["existencia"] - cantidad
             })
@@ -1454,19 +2775,22 @@ def confirmar_pedido():
 
         for producto in productos_compra:
 
+            # Guardar precio de venta y costo histórico.
             cursor.execute("""
                 INSERT INTO detalle_pedido (
                     id_pedido,
                     id_producto,
                     cantidad,
-                    precio_unitario
+                    precio_unitario,
+                    costo_unitario
                 )
-                VALUES (%s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s)
             """, (
                 id_pedido,
                 producto["id_producto"],
                 producto["cantidad"],
-                producto["precio"]
+                producto["precio"],
+                producto["costo_compra"]
             ))
 
             cursor.execute("""
@@ -1546,7 +2870,6 @@ def confirmar_pedido():
 
         if conexion is not None and conexion.is_connected():
             conexion.close()
-
 
 # ==========================================
 # COMPROBANTE DEL PEDIDO

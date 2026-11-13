@@ -132,8 +132,9 @@
     <nav>
         <a href="{{ url_for('admin') }}">Inicio</a>
         <a href="{{ url_for('admin_pedidos') }}">Pedidos</a>
-        <a href="{{ url_for('admin_inventario') }}">Inventario</a>
-        <a href="{{ url_for('admin_historial') }}">Historial</a>
+<a href="{{ url_for('admin_inventario') }}">Inventario</a>
+<a href="{{ url_for('admin_reportes') }}">Reportes</a>
+<a href="{{ url_for('admin_historial') }}">Historial</a>
         <a href="{{ url_for('inicio') }}">Tienda</a>
         <a href="{{ url_for('logout') }}">Cerrar sesión</a>
     </nav>
@@ -167,11 +168,15 @@
 
     <h2>Pedidos recientes</h2>
 
-    <div class="acciones">
-        <a class="boton" href="{{ url_for('admin_pedidos') }}">
-            Administrar pedidos
-        </a>
-    </div>
+<div class="acciones">
+    <a class="boton" href="{{ url_for('admin_pedidos') }}">
+        Administrar pedidos
+    </a>
+
+    <a class="boton" href="{{ url_for('admin_reportes') }}">
+        Consultar reportes
+    </a>
+</div>
 
     <table>
         <thead>

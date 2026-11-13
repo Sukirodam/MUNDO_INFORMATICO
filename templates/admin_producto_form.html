@@ -53,6 +53,12 @@
             resize: vertical;
         }
 
+        .ayuda {
+            margin: 6px 0 0;
+            color: #8495b2;
+            font-size: 13px;
+        }
+
         .boton {
             display: inline-block;
             margin-top: 22px;
@@ -108,7 +114,8 @@
 
     <form method="POST"
           action="{% if producto %}{{ url_for('admin_editar_producto', id_producto=producto.id_producto) }}{% else %}{{ url_for('admin_nuevo_producto') }}{% endif %}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <label>Nombre del producto</label>
         <input type="text"
@@ -135,13 +142,28 @@
         <textarea name="descripcion"
                   maxlength="1000">{{ producto.descripcion if producto else '' }}</textarea>
 
-        <label>Precio (MXN)</label>
+        <label>Precio de venta (MXN)</label>
         <input type="number"
                name="precio"
                min="0"
+               max="99999999.99"
                step="0.01"
                value="{{ producto.precio if producto else '' }}"
                required>
+
+        <label>Costo de compra (MXN)</label>
+        <input type="number"
+               name="costo_compra"
+               min="0"
+               max="99999999.99"
+               step="0.01"
+               value="{{ producto.costo_compra if producto and producto.costo_compra is not none else '' }}"
+               placeholder="Ejemplo: 8500.00">
+
+        <p class="ayuda">
+            Es lo que pagas por adquirir el producto. Se utilizará
+            para calcular las ganancias de la tienda.
+        </p>
 
         {% if not producto %}
             <label>Existencias iniciales</label>
@@ -153,7 +175,8 @@
                    required>
         {% else %}
             <p style="color:#b7c3d9; margin-top:20px;">
-                Existencias actuales: <strong>{{ producto.existencia }}</strong>.
+                Existencias actuales:
+                <strong>{{ producto.existencia }}</strong>.
                 Modifícalas desde la pantalla de inventario.
             </p>
         {% endif %}
