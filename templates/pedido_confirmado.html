@@ -44,6 +44,21 @@
             margin: 40px auto;
         }
 
+        /* LOGO DEL COMPROBANTE */
+
+        .logo-comprobante {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .logo-comprobante img {
+            width: 150px;
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+
         .confirmacion {
             text-align: center;
             padding: 30px 20px;
@@ -112,6 +127,8 @@
             overflow-wrap: anywhere;
         }
 
+        /* PRODUCTOS */
+
         .producto {
             display: flex;
             justify-content: space-between;
@@ -121,19 +138,58 @@
             border-bottom: 1px solid #26364f;
         }
 
+        .producto-contenido {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .producto-imagen {
+            width: 100px;
+            height: 85px;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #ffffff;
+            border: 1px solid #344967;
+            border-radius: 9px;
+            overflow: hidden;
+        }
+
+        .producto-imagen img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 5px;
+        }
+
+        .imagen-no-disponible {
+            color: #64748b;
+            font-size: 11px;
+            text-align: center;
+            padding: 8px;
+            line-height: 1.4;
+        }
+
         .producto-info {
             flex: 1;
+            min-width: 0;
         }
 
         .producto-info h4 {
             color: #ffffff;
             font-size: 15px;
             margin-bottom: 7px;
+            overflow-wrap: anywhere;
         }
 
         .producto-info p {
             color: #94a3b8;
             font-size: 13px;
+            margin-bottom: 4px;
         }
 
         .subtotal {
@@ -234,6 +290,8 @@
             font-size: 13px;
         }
 
+        /* ADAPTACIÓN A CELULARES */
+
         @media (max-width: 600px) {
             .datos {
                 grid-template-columns: 1fr;
@@ -250,7 +308,39 @@
             .total strong {
                 font-size: 22px;
             }
+
+            .panel {
+                padding: 18px;
+            }
+
+            .producto {
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .producto-contenido {
+                gap: 10px;
+            }
+
+            .producto-imagen {
+                width: 75px;
+                height: 75px;
+            }
+
+            .producto-info h4 {
+                font-size: 14px;
+            }
+
+            .subtotal {
+                font-size: 13px;
+            }
+
+            .logo-comprobante img {
+                width: 125px;
+            }
         }
+
+        /* IMPRESIÓN DEL COMPROBANTE */
 
         @media print {
             body {
@@ -265,6 +355,17 @@
             .contenedor {
                 width: 100%;
                 margin: 0;
+            }
+
+            .logo-comprobante {
+                display: block;
+                margin-bottom: 20px;
+            }
+
+            .logo-comprobante img {
+                width: 130px;
+                max-height: 110px;
+                object-fit: contain;
             }
 
             .panel, .confirmacion {
@@ -284,8 +385,15 @@
                 color: black;
             }
 
-            .subtotal, .total strong {
+            .subtotal,
+            .total strong {
                 color: black;
+            }
+
+            .producto-imagen {
+                border: 1px solid #cccccc;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
             }
         }
     </style>
@@ -299,6 +407,15 @@
     </header>
 
     <main class="contenedor">
+
+        <!-- LOGO DE LA TIENDA -->
+
+        <div class="logo-comprobante">
+            <img
+                src="{{ url_for('static', filename='img/logo.jpeg') }}"
+                alt="Logo de MUNDO INFORMÁTICO"
+            >
+        </div>
 
         <!-- CONFIRMACIÓN -->
 
@@ -322,7 +439,6 @@
 
         </section>
 
-
         <!-- INFORMACIÓN DEL PEDIDO -->
 
         <section class="panel">
@@ -331,12 +447,13 @@
 
             <div class="datos">
 
-<div class="dato">
-    <span>Teléfono de contacto</span>
-    <strong style="font-size: 15px; letter-spacing: 0.5px;">
-        {{ pedido.telefono_contacto }}
-    </strong>
-</div>
+                <div class="dato">
+                    <span>Teléfono de contacto</span>
+                    <strong style="font-size: 15px; letter-spacing: 0.5px;">
+                        {{ pedido.telefono_contacto }}
+                    </strong>
+                </div>
+
                 <div class="dato">
                     <span>Fecha de compra</span>
                     <strong>{{ pedido.fecha_pedido }}</strong>
@@ -359,7 +476,6 @@
             </div>
 
         </section>
-
 
         <!-- DATOS DE ENTREGA -->
 
@@ -395,7 +511,6 @@
 
         </section>
 
-
         <!-- PRODUCTOS -->
 
         <section class="panel">
@@ -406,18 +521,54 @@
 
                 <div class="producto">
 
-                    <div class="producto-info">
+                    <div class="producto-contenido">
 
-                        <h4>{{ producto.nombre }}</h4>
+                        <!-- IMAGEN DEL PRODUCTO -->
 
-                        <p>
-                            Cantidad: {{ producto.cantidad }}
-                        </p>
+                        <div class="producto-imagen">
 
-                        <p>
-                            Precio unitario:
-                            ${{ "%.2f"|format(producto.precio_unitario) }}
-                        </p>
+                            {% if producto.imagen %}
+
+                                <img
+                                    src="{{ producto.imagen }}"
+                                    alt="{{ producto.nombre }}"
+                                    loading="lazy"
+                                    onerror="this.hidden=true; this.nextElementSibling.hidden=false;"
+                                >
+
+                                <span
+                                    class="imagen-no-disponible"
+                                    hidden
+                                >
+                                    Imagen no disponible
+                                </span>
+
+                            {% else %}
+
+                                <span class="imagen-no-disponible">
+                                    Imagen no disponible
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+                        <!-- INFORMACIÓN DEL PRODUCTO -->
+
+                        <div class="producto-info">
+
+                            <h4>{{ producto.nombre }}</h4>
+
+                            <p>
+                                Cantidad: {{ producto.cantidad }}
+                            </p>
+
+                            <p>
+                                Precio unitario:
+                                ${{ "%.2f"|format(producto.precio_unitario) }}
+                            </p>
+
+                        </div>
 
                     </div>
 
@@ -451,7 +602,6 @@
             </div>
 
         </section>
-
 
         <!-- BOTONES -->
 

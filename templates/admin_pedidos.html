@@ -37,6 +37,60 @@
             overflow-x: auto;
         }
 
+        .buscador {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .buscador input,
+        .buscador select {
+            flex: 1;
+            min-width: 190px;
+            padding: 12px;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            background: #101827;
+            color: white;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .buscador input:focus,
+        .buscador select:focus {
+            border-color: #38bdf8;
+        }
+
+        .boton {
+            display: inline-block;
+            background: #0284c7;
+            color: white;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .boton:hover {
+            background: #0369a1;
+        }
+
+        .boton-limpiar {
+            background: #475569;
+        }
+
+        .boton-limpiar:hover {
+            background: #334155;
+        }
+
+        .resultados {
+            color: #94a3b8;
+            margin-bottom: 18px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -53,32 +107,42 @@
             color: #38bdf8;
         }
 
-        a {
+        td a {
             color: #38bdf8;
             text-decoration: none;
         }
 
-        a:hover {
+        td a:hover {
             text-decoration: underline;
         }
 
-        .boton {
+        .estado {
             display: inline-block;
-            background: #0284c7;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-
-        .boton:hover {
-            background: #0369a1;
-            text-decoration: none;
+            padding: 5px 9px;
+            border-radius: 5px;
+            background: #334155;
+            font-size: 13px;
+            text-transform: capitalize;
         }
 
         @media(max-width: 600px) {
             body {
                 padding: 15px;
+            }
+
+            .contenedor {
+                padding: 15px;
+            }
+
+            .buscador {
+                flex-direction: column;
+            }
+
+            .buscador input,
+            .buscador select,
+            .buscador button,
+            .buscador a {
+                width: 100%;
             }
         }
     </style>
@@ -87,11 +151,71 @@
 <body>
 
     <h1>Administración de pedidos</h1>
-    <p class="subtitulo">Consulta y administra las compras de tus clientes.</p>
 
-    <a class="boton" href="{{ url_for('admin') }}">Volver al panel</a>
+    <p class="subtitulo">
+        Consulta, busca y administra las compras de tus clientes.
+    </p>
+
+    <a class="boton" href="{{ url_for('admin') }}">
+        Volver al panel
+    </a>
 
     <section class="contenedor">
+
+        <form method="GET"
+              action="{{ url_for('admin_pedidos') }}"
+              class="buscador">
+
+            <input
+                type="text"
+                name="buscar"
+                placeholder="Buscar por número, cliente o correo..."
+                value="{{ busqueda }}"
+            >
+
+            <select name="estado">
+                <option value="">Todos los estados</option>
+
+                <option value="pendiente"
+                    {% if estado_seleccionado == 'pendiente' %}selected{% endif %}>
+                    Pendiente
+                </option>
+
+                <option value="pagado"
+                    {% if estado_seleccionado == 'pagado' %}selected{% endif %}>
+                    Pagado
+                </option>
+
+                <option value="enviado"
+                    {% if estado_seleccionado == 'enviado' %}selected{% endif %}>
+                    Enviado
+                </option>
+
+                <option value="entregado"
+                    {% if estado_seleccionado == 'entregado' %}selected{% endif %}>
+                    Entregado
+                </option>
+
+                <option value="cancelado"
+                    {% if estado_seleccionado == 'cancelado' %}selected{% endif %}>
+                    Cancelado
+                </option>
+            </select>
+
+            <button type="submit" class="boton">
+                Buscar
+            </button>
+
+            <a href="{{ url_for('admin_pedidos') }}"
+               class="boton boton-limpiar">
+                Limpiar
+            </a>
+
+        </form>
+
+        <p class="resultados">
+            Pedidos encontrados: {{ pedidos|length }}
+        </p>
 
         <table>
             <thead>
@@ -107,14 +231,22 @@
             </thead>
 
             <tbody>
+
                 {% for pedido in pedidos %}
+
                 <tr>
                     <td>#{{ pedido.id_pedido }}</td>
                     <td>{{ pedido.cliente }}</td>
                     <td>{{ pedido.correo }}</td>
                     <td>{{ pedido.fecha_pedido }}</td>
                     <td>${{ "%.2f"|format(pedido.total) }}</td>
-                    <td>{{ pedido.estado }}</td>
+
+                    <td>
+                        <span class="estado">
+                            {{ pedido.estado }}
+                        </span>
+                    </td>
+
                     <td>
                         <a href="{{ url_for('admin_detalle_pedido', id_pedido=pedido.id_pedido) }}">
                             Ver pedido
@@ -123,10 +255,15 @@
                 </tr>
 
                 {% else %}
+
                 <tr>
-                    <td colspan="7">No hay pedidos registrados.</td>
+                    <td colspan="7">
+                        No se encontraron pedidos con esos criterios.
+                    </td>
                 </tr>
+
                 {% endfor %}
+
             </tbody>
         </table>
 

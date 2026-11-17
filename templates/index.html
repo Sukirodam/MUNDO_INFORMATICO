@@ -498,16 +498,12 @@
             right: 25px;
             bottom: 105px;
             z-index: 1000;
-
             width: 490px;
             max-width: calc(100vw - 30px);
-
             height: 480px;
             max-height: calc(100vh - 140px);
-
             overflow: hidden;
             flex-direction: column;
-
             border: 1px solid var(--borde);
             border-radius: 15px;
             background: var(--panel);
@@ -561,13 +557,7 @@
             justify-content: flex-start;
             gap: 12px;
             padding: 15px 8px;
-
-            background: linear-gradient(
-                180deg,
-                #17233d,
-                #10182b
-            );
-
+            background: linear-gradient(180deg, #17233d, #10182b);
             border-right: 1px solid var(--borde);
             text-align: center;
         }
@@ -654,6 +644,45 @@
             font-style: italic;
         }
 
+        /* CONTROLES DE VOZ */
+
+        .chatbot-controles-voz {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 7px;
+            padding: 8px 12px;
+            border-top: 1px solid var(--borde);
+            background: #111a30;
+        }
+
+        .chatbot-estado-voz {
+            flex: 1;
+            min-width: 100px;
+            color: var(--texto-secundario);
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .chatbot-botones-voz {
+            display: flex;
+            gap: 6px;
+        }
+
+        .boton-voz {
+            padding: 7px 9px;
+            font-size: 12px;
+        }
+
+        .boton-voz.activo {
+            background: #167b55;
+        }
+
+        .boton-voz-grabando {
+            background: #b52e43 !important;
+        }
+
         .chatbot-formulario {
             display: flex;
             flex-shrink: 0;
@@ -685,6 +714,16 @@
 
         #chatbot-enviar:disabled {
             opacity: .6;
+        }
+
+        #chatbot-microfono {
+            min-width: 42px;
+            padding: 9px;
+            font-size: 17px;
+        }
+
+        #chatbot-microfono:disabled {
+            opacity: .5;
         }
 
         /* TABLETS Y PANTALLAS PEQUEÑAS */
@@ -795,6 +834,25 @@
             #chatbot-enviar {
                 padding: 9px;
                 font-size: 12px;
+            }
+
+            .chatbot-controles-voz {
+                padding: 7px;
+                gap: 5px;
+            }
+
+            .chatbot-estado-voz {
+                font-size: 10px;
+            }
+
+            .boton-voz {
+                padding: 7px;
+                font-size: 11px;
+            }
+
+            #chatbot-microfono {
+                min-width: 38px;
+                padding: 8px;
             }
         }
     </style>
@@ -981,23 +1039,23 @@
 
                             {% endif %}
 
-<form
-    class="form-carrito"
-    action="{{ url_for('agregar_carrito', id_producto=producto.id_producto) }}"
-    method="POST"
->
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <form
+                                class="form-carrito"
+                                action="{{ url_for('agregar_carrito', id_producto=producto.id_producto) }}"
+                                method="POST"
+                            >
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    <button
-        type="submit"
-        class="boton-carrito"
-        {% if producto.existencia | int <= 0 %}
-            disabled
-        {% endif %}
-    >
-        Agregar al carrito
-    </button>
-</form>
+                                <button
+                                    type="submit"
+                                    class="boton-carrito"
+                                    {% if producto.existencia | int <= 0 %}
+                                        disabled
+                                    {% endif %}
+                                >
+                                    Agregar al carrito
+                                </button>
+                            </form>
 
                         </div>
 
@@ -1055,9 +1113,7 @@
 
     </section>
 
-    <!-- ==========================================
-         NUESTRO EQUIPO DE DESARROLLO
-    ========================================== -->
+    <!-- NUESTRO EQUIPO -->
 
     <section id="equipo" class="equipo">
 
@@ -1073,8 +1129,6 @@
         </p>
 
         <div class="equipo-grid">
-
-            <!-- INTEGRANTE 1 -->
 
             <article class="miembro">
 
@@ -1103,8 +1157,6 @@
 
             </article>
 
-            <!-- INTEGRANTE 2 -->
-
             <article class="miembro">
 
                 <div class="miembro-imagen">
@@ -1132,8 +1184,6 @@
 
             </article>
 
-            <!-- INTEGRANTE 3 -->
-
             <article class="miembro">
 
                 <div class="miembro-imagen">
@@ -1160,8 +1210,6 @@
                 </p>
 
             </article>
-
-            <!-- INTEGRANTE 4 -->
 
             <article class="miembro">
 
@@ -1242,8 +1290,6 @@
 
         </div>
 
-        <!-- PERSONAJE Y CONVERSACIÓN -->
-
         <div class="chatbot-cuerpo">
 
             <aside class="chatbot-personaje">
@@ -1282,6 +1328,43 @@
 
                 </div>
 
+                <!-- ESTADO Y CONTROLES DE VOZ -->
+
+                <div class="chatbot-controles-voz">
+
+                    <span
+                        id="chatbot-estado-voz"
+                        class="chatbot-estado-voz"
+                        aria-live="polite"
+                    >
+                        Voz activada · Femenina en español
+                    </span>
+
+                    <div class="chatbot-botones-voz">
+
+                        <button
+                            type="button"
+                            id="chatbot-voz-toggle"
+                            class="boton-voz activo"
+                            aria-pressed="true"
+                            title="Activar o silenciar la voz"
+                        >
+                            🔊 Voz
+                        </button>
+
+                        <button
+                            type="button"
+                            id="chatbot-detener-voz"
+                            class="boton-voz"
+                            title="Detener la voz"
+                        >
+                            ■ Detener
+                        </button>
+
+                    </div>
+
+                </div>
+
                 <form id="chatbot-formulario" class="chatbot-formulario">
 
                     <input
@@ -1293,6 +1376,15 @@
                         aria-label="Escribe tu pregunta"
                         required
                     >
+
+                    <button
+                        type="button"
+                        id="chatbot-microfono"
+                        aria-label="Hablar con el asistente"
+                        title="Hablar con el asistente"
+                    >
+                        🎙️
+                    </button>
 
                     <button type="submit" id="chatbot-enviar">
                         Enviar
@@ -1307,7 +1399,7 @@
     </section>
 
     <!-- ==========================================
-         JAVASCRIPT DEL CHATBOT
+         JAVASCRIPT DEL CHATBOT Y SISTEMA DE VOZ
     ========================================== -->
 
     <script>
@@ -1322,7 +1414,515 @@
         const enviar = document.getElementById("chatbot-enviar");
         const mensajes = document.getElementById("chatbot-mensajes");
 
+        const microfono = document.getElementById("chatbot-microfono");
+        const botonVoz = document.getElementById("chatbot-voz-toggle");
+        const botonDetenerVoz = document.getElementById("chatbot-detener-voz");
+        const estadoVoz = document.getElementById("chatbot-estado-voz");
+
+        // ==========================================
+        // CONFIGURACIÓN DE VOZ
+        // ==========================================
+
+        const vozDisponible = (
+            "speechSynthesis" in window &&
+            "SpeechSynthesisUtterance" in window
+        );
+
+        const ReconocimientoVoz =
+            window.SpeechRecognition ||
+            window.webkitSpeechRecognition;
+
+        let reconocimiento = null;
+        let vozActivada = true;
+        let escuchando = false;
+        let vozSeleccionada = null;
+        let solicitudDeVoz = 0;
+
+        // ==========================================
+        // SELECCIONAR UNA VOZ FEMENINA EN ESPAÑOL
+        // ==========================================
+
+        function seleccionarVozFemenina() {
+
+            if (!vozDisponible) {
+                return null;
+            }
+
+            const voces = window.speechSynthesis.getVoices();
+
+            if (!voces.length) {
+                return null;
+            }
+
+            const vocesEspanol = voces.filter(function (voz) {
+                return voz.lang &&
+                    voz.lang.toLowerCase().startsWith("es");
+            });
+
+            if (!vocesEspanol.length) {
+                return null;
+            }
+
+            const nombresFemeninos = [
+                "female",
+                "woman",
+                "mujer",
+                "dalia",
+                "helena",
+                "sabina",
+                "monica",
+                "mónica",
+                "paulina",
+                "lucia",
+                "lucía",
+                "sofia",
+                "sofía",
+                "elena",
+                "laura",
+                "zira",
+                "aria"
+            ];
+
+            function puntuacionVoz(voz) {
+
+                const nombre = voz.name.toLowerCase();
+                const idioma = voz.lang.toLowerCase();
+
+                let puntos = 0;
+
+                // Priorizar español de México.
+
+                if (idioma === "es-mx") {
+                    puntos += 100;
+                } else if (idioma.startsWith("es")) {
+                    puntos += 50;
+                }
+
+                // Buscar nombres que suelen corresponder
+                // a voces femeninas.
+
+                if (
+                    nombresFemeninos.some(function (nombreFemenino) {
+                        return nombre.includes(nombreFemenino);
+                    })
+                ) {
+                    puntos += 30;
+                }
+
+                // Preferir voces de mejor calidad cuando
+                // el navegador las identifica como naturales.
+
+                if (
+                    nombre.includes("natural") ||
+                    nombre.includes("online")
+                ) {
+                    puntos += 5;
+                }
+
+                return puntos;
+            }
+
+            const vocesOrdenadas = [...vocesEspanol].sort(
+                function (a, b) {
+                    return puntuacionVoz(b) - puntuacionVoz(a);
+                }
+            );
+
+            return vocesOrdenadas[0] || null;
+        }
+
+        function cargarVoz() {
+
+            if (!vozDisponible) {
+                return;
+            }
+
+            vozSeleccionada = seleccionarVozFemenina();
+
+            if (vozSeleccionada) {
+
+                estadoVoz.textContent =
+                    "Voz disponible: " + vozSeleccionada.name;
+
+            } else {
+
+                estadoVoz.textContent =
+                    "No se encontró una voz en español.";
+
+            }
+        }
+
+        if (vozDisponible) {
+
+            cargarVoz();
+
+            window.speechSynthesis.onvoiceschanged = cargarVoz;
+
+        } else {
+
+            vozActivada = false;
+
+            botonVoz.disabled = true;
+            botonDetenerVoz.disabled = true;
+
+            estadoVoz.textContent =
+                "Tu navegador no admite lectura de voz.";
+
+            botonVoz.setAttribute("aria-pressed", "false");
+
+        }
+
+        // ==========================================
+        // LEER RESPUESTAS DEL ASISTENTE
+        // ==========================================
+
+        function hablar(texto) {
+
+            if (!vozDisponible || !vozActivada) {
+                return;
+            }
+
+            if (!texto || !texto.trim()) {
+                return;
+            }
+
+            // Detener cualquier lectura anterior.
+
+            window.speechSynthesis.cancel();
+
+            const identificador = ++solicitudDeVoz;
+
+            const mensajeVoz = new SpeechSynthesisUtterance(texto);
+
+            mensajeVoz.lang = "es-MX";
+            mensajeVoz.rate = 0.95;
+            mensajeVoz.pitch = 1.08;
+            mensajeVoz.volume = 1;
+
+            if (vozSeleccionada) {
+                mensajeVoz.voice = vozSeleccionada;
+            }
+
+            mensajeVoz.onstart = function () {
+
+                if (identificador === solicitudDeVoz) {
+
+                    estadoVoz.textContent = "La asesora está hablando...";
+
+                }
+
+            };
+
+            mensajeVoz.onend = function () {
+
+                if (identificador === solicitudDeVoz) {
+
+                    estadoVoz.textContent = vozActivada
+                        ? "Voz activada"
+                        : "Voz silenciada";
+
+                }
+
+            };
+
+            mensajeVoz.onerror = function (evento) {
+
+                if (identificador === solicitudDeVoz) {
+
+                    console.warn("Error de síntesis de voz:", evento);
+
+                    estadoVoz.textContent =
+                        "No se pudo reproducir la voz.";
+
+                }
+
+            };
+
+            window.speechSynthesis.speak(mensajeVoz);
+        }
+
+        // ==========================================
+        // ACTIVAR O SILENCIAR LA VOZ
+        // ==========================================
+
+        botonVoz.addEventListener("click", function () {
+
+            if (!vozDisponible) {
+                return;
+            }
+
+            vozActivada = !vozActivada;
+
+            botonVoz.setAttribute(
+                "aria-pressed",
+                String(vozActivada)
+            );
+
+            if (vozActivada) {
+
+                botonVoz.textContent = "🔊 Voz";
+                botonVoz.classList.add("activo");
+
+                estadoVoz.textContent = "Voz activada";
+
+            } else {
+
+                botonVoz.textContent = "🔇 Silenciada";
+                botonVoz.classList.remove("activo");
+
+                detenerVoz();
+
+                estadoVoz.textContent = "Voz silenciada";
+
+            }
+
+        });
+
+        // ==========================================
+        // DETENER LA LECTURA
+        // ==========================================
+
+        function detenerVoz() {
+
+            if (vozDisponible) {
+
+                window.speechSynthesis.cancel();
+
+                solicitudDeVoz++;
+
+            }
+
+        }
+
+        botonDetenerVoz.addEventListener("click", function () {
+
+            detenerVoz();
+
+            estadoVoz.textContent = vozActivada
+                ? "Lectura detenida"
+                : "Voz silenciada";
+
+        });
+
+        // ==========================================
+        // RECONOCIMIENTO DE VOZ
+        // ==========================================
+
+        let errorReconocimiento = false;
+        let resultadoReconocido = false;
+
+        if (ReconocimientoVoz) {
+
+            reconocimiento = new ReconocimientoVoz();
+
+            reconocimiento.lang = "es-MX";
+            reconocimiento.continuous = false;
+            reconocimiento.interimResults = true;
+            reconocimiento.maxAlternatives = 1;
+
+            reconocimiento.onstart = function () {
+
+                escuchando = true;
+                errorReconocimiento = false;
+                resultadoReconocido = false;
+
+                microfono.textContent = "⏹";
+                microfono.classList.add("boton-voz-grabando");
+
+                estadoVoz.textContent =
+                    "Te estoy escuchando. Habla ahora...";
+
+                detenerVoz();
+            };
+
+            reconocimiento.onaudiostart = function () {
+                estadoVoz.textContent =
+                    "Micrófono conectado. Te escucho...";
+            };
+
+            reconocimiento.onspeechstart = function () {
+                estadoVoz.textContent =
+                    "Detecté tu voz. Continúa hablando...";
+            };
+
+            reconocimiento.onresult = function (evento) {
+
+                let textoFinal = "";
+                let textoTemporal = "";
+
+                for (
+                    let i = evento.resultIndex;
+                    i < evento.results.length;
+                    i++
+                ) {
+
+                    const resultado = evento.results[i];
+                    const transcripcion = resultado[0].transcript;
+
+                    if (resultado.isFinal) {
+                        textoFinal += transcripcion;
+                    } else {
+                        textoTemporal += transcripcion;
+                    }
+                }
+
+                if (textoFinal.trim()) {
+
+                    resultadoReconocido = true;
+
+                    entrada.value = textoFinal.trim();
+
+                    estadoVoz.textContent =
+                        "Mensaje reconocido. Enviando...";
+
+                    reconocimiento.stop();
+
+                    formulario.requestSubmit();
+
+                } else if (textoTemporal.trim()) {
+
+                    entrada.value = textoTemporal.trim();
+
+                    estadoVoz.textContent =
+                        "Reconociendo: " + textoTemporal.trim();
+                }
+            };
+
+            reconocimiento.onerror = function (evento) {
+
+                errorReconocimiento = true;
+
+                console.warn(
+                    "Error de reconocimiento de voz:",
+                    evento.error,
+                    evento.message || ""
+                );
+
+                const errores = {
+
+                    "not-allowed":
+                        "Permite el acceso al micrófono en tu navegador.",
+
+                    "service-not-allowed":
+                        "El navegador bloqueó el servicio de reconocimiento.",
+
+                    "no-speech":
+                        "No detecté tu voz. Inténtalo hablando un poco más cerca del micrófono.",
+
+                    "audio-capture":
+                        "No se encontró un micrófono disponible.",
+
+                    "network":
+                        "Error de conexión con el servicio de reconocimiento de voz.",
+
+                    "aborted":
+                        "El reconocimiento fue interrumpido.",
+
+                    "language-not-supported":
+                        "El reconocimiento no admite el idioma seleccionado."
+                };
+
+                estadoVoz.textContent =
+                    errores[evento.error] ||
+                    "Error de reconocimiento: " + evento.error;
+            };
+
+            reconocimiento.onend = function () {
+
+                escuchando = false;
+
+                microfono.textContent = "🎙️";
+                microfono.classList.remove("boton-voz-grabando");
+
+                // No sobrescribir los errores detectados.
+
+                if (errorReconocimiento) {
+                    return;
+                }
+
+                // Si terminó sin reconocer ninguna palabra.
+
+                if (!resultadoReconocido && !enviar.disabled) {
+
+                    estadoVoz.textContent =
+                        "No se recibió ninguna transcripción. Inténtalo otra vez.";
+
+                    return;
+                }
+
+                if (
+                    vozActivada &&
+                    !window.speechSynthesis.speaking &&
+                    !enviar.disabled
+                ) {
+
+                    estadoVoz.textContent = "Voz activada";
+                }
+            };
+
+        } else {
+
+            microfono.disabled = true;
+
+            microfono.title =
+                "Tu navegador no admite reconocimiento de voz.";
+
+            estadoVoz.textContent =
+                "Micrófono no compatible en este navegador.";
+        }
+
+        // ==========================================
+        // INICIAR Y DETENER EL MICRÓFONO
+        // ==========================================
+
+        microfono.addEventListener("click", function () {
+
+            if (!reconocimiento) {
+                return;
+            }
+
+            if (escuchando) {
+
+                reconocimiento.stop();
+
+                estadoVoz.textContent =
+                    "Deteniendo reconocimiento...";
+
+                return;
+            }
+
+            if (enviar.disabled) {
+                return;
+            }
+
+            entrada.value = "";
+
+            errorReconocimiento = false;
+            resultadoReconocido = false;
+
+            try {
+
+                reconocimiento.start();
+
+                estadoVoz.textContent =
+                    "Preparando micrófono...";
+
+            } catch (error) {
+
+                console.error(
+                    "No se pudo iniciar el micrófono:",
+                    error
+                );
+
+                estadoVoz.textContent =
+                    "No se pudo iniciar el micrófono. Inténtalo nuevamente.";
+            }
+        });
+
+
+        // ==========================================
         // ABRIR Y CERRAR EL CHATBOT
+        // ==========================================
 
         boton.addEventListener("click", function () {
 
@@ -1333,6 +1933,12 @@
 
             if (abierto) {
                 entrada.focus();
+            } else {
+                detenerVoz();
+
+                if (escuchando && reconocimiento) {
+                    reconocimiento.stop();
+                }
             }
 
         });
@@ -1344,9 +1950,17 @@
             boton.setAttribute("aria-expanded", "false");
             ventana.setAttribute("aria-hidden", "true");
 
+            detenerVoz();
+
+            if (escuchando && reconocimiento) {
+                reconocimiento.stop();
+            }
+
         });
 
+        // ==========================================
         // CREAR MENSAJES
+        // ==========================================
 
         function agregarMensaje(texto, tipo) {
 
@@ -1364,7 +1978,9 @@
 
         }
 
+        // ==========================================
         // ENVIAR PREGUNTAS A FLASK
+        // ==========================================
 
         formulario.addEventListener("submit", async function (evento) {
 
@@ -1376,11 +1992,20 @@
                 return;
             }
 
+            // Si estaba escuchando, detener el micrófono.
+
+            if (escuchando && reconocimiento) {
+                reconocimiento.stop();
+            }
+
+            detenerVoz();
+
             agregarMensaje(pregunta, "chat-usuario");
 
             entrada.value = "";
             entrada.disabled = true;
             enviar.disabled = true;
+            microfono.disabled = true;
 
             const indicador = agregarMensaje(
                 "Consultando nuestros productos...",
@@ -1389,51 +2014,51 @@
 
             try {
 
-               const csrfToken = document.querySelector(
-    'meta[name="csrf-token"]'
-).getAttribute("content");
+                const csrfToken = document.querySelector(
+                    'meta[name="csrf-token"]'
+                ).getAttribute("content");
 
-const respuesta = await fetch("/chatbot", {
+                const respuesta = await fetch("/chatbot", {
 
-    method: "POST",
+                    method: "POST",
 
-    headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": csrfToken
-    },
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken
+                    },
 
-    body: JSON.stringify({
-        mensaje: pregunta
-    })
+                    body: JSON.stringify({
+                        mensaje: pregunta
+                    })
 
-});
+                });
 
                 const datos = await respuesta.json();
 
                 indicador.remove();
 
-                if (!respuesta.ok) {
+                const respuestaTexto =
+                    datos.respuesta ||
+                    "No recibí una respuesta válida.";
 
-                    agregarMensaje(
-                        datos.respuesta || "No se pudo procesar tu pregunta.",
-                        "chat-bot"
-                    );
+                agregarMensaje(
+                    respuestaTexto,
+                    "chat-bot"
+                );
 
-                } else {
+                // Leer la respuesta del asistente.
 
-                    agregarMensaje(
-                        datos.respuesta || "No recibí una respuesta válida.",
-                        "chat-bot"
-                    );
-
-                }
+                hablar(respuestaTexto);
 
             } catch (error) {
 
                 indicador.remove();
 
+                const mensajeError =
+                    "No pude conectarme con la tienda. Comprueba tu conexión e inténtalo nuevamente.";
+
                 agregarMensaje(
-                    "No pude conectarme con la tienda. Comprueba tu conexión e inténtalo nuevamente.",
+                    mensajeError,
                     "chat-bot"
                 );
 
@@ -1443,6 +2068,8 @@ const respuesta = await fetch("/chatbot", {
 
                 entrada.disabled = false;
                 enviar.disabled = false;
+                microfono.disabled = !reconocimiento;
+
                 entrada.focus();
 
             }

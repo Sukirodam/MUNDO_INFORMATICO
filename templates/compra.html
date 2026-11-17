@@ -173,6 +173,21 @@
             padding: 5px;
         }
 
+        .imagen-no-disponible {
+            width: 65px;
+            height: 65px;
+            flex: 0 0 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+            border-radius: 8px;
+            background: #26364f;
+            color: #cbd5e1;
+            font-size: 10px;
+            text-align: center;
+        }
+
         .producto-info {
             flex: 1;
         }
@@ -358,6 +373,9 @@
                             name="nombre_receptor"
                             maxlength="150"
                             placeholder="Nombre completo"
+                            pattern="[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+([ '-][A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*"
+                            title="Escribe solamente letras, acentos, espacios, guiones o apóstrofes. No se permiten números."
+                            oninput="this.value = this.value.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ '-]/g, '')"
                             required
                         >
                     </div>
@@ -387,18 +405,21 @@
                                 <option value="+54">🇦🇷 Argentina (+54)</option>
                             </select>
 
+
                             <input
-                                type="tel"
-                                id="telefono_contacto"
-                                name="telefono_contacto"
-                                inputmode="numeric"
-                                pattern="[0-9]{1,10}"
-                                maxlength="10"
-                                placeholder="Número telefónico"
-                                title="Introduce un máximo de 10 dígitos."
-                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)"
-                                required
-                            >
+                              type="tel"
+    id="telefono_contacto"
+      name="telefono_contacto"
+    inputmode="numeric"
+    pattern="[0-9]{7,10}"
+    minlength="7"
+    maxlength="10"
+    placeholder="Número telefónico"
+    title="Introduce entre 7 y 10 dígitos, sin incluir la lada."
+    oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)"
+    required
+>
+
 
                         </div>
 
@@ -415,13 +436,17 @@
                             <span class="obligatorio">*</span>
                         </label>
 
-                        <textarea
-                            id="direccion_entrega"
-                            name="direccion_entrega"
-                            maxlength="500"
-                            placeholder="Calle, número, colonia, ciudad y código postal"
-                            required
-                        ></textarea>
+
+<textarea
+    id="direccion_entrega"
+    name="direccion_entrega"
+    minlength="5"
+    maxlength="500"
+    placeholder="Calle, número, colonia, ciudad y código postal"
+    oninput="this.setCustomValidity(this.value.trim().length < 5 ? 'Escribe una dirección de al menos 5 caracteres.' : '')"
+    required
+></textarea>
+
                     </div>
 
                     <div class="campo">
@@ -449,10 +474,18 @@
 
                         <div class="producto">
 
-                            <img
-                                src="{{ url_for('static', filename='img/' + producto.imagen) }}"
-                                alt="{{ producto.nombre }}"
-                            >
+                            {% if producto.imagen %}
+                                <img
+                                    src="{{ producto.imagen }}"
+                                    alt="{{ producto.nombre }}"
+                                    loading="lazy"
+                                    onerror="this.style.display='none';"
+                                >
+                            {% else %}
+                                <div class="imagen-no-disponible">
+                                    Imagen no disponible
+                                </div>
+                            {% endif %}
 
                             <div class="producto-info">
 

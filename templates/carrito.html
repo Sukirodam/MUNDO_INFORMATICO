@@ -199,14 +199,27 @@
 
                         <label>Cantidad:</label>
 
-                        <input
-                            type="number"
-                            name="cantidad"
-                            min="1"
-                            max="{{ producto.existencia }}"
-                            value="{{ producto.cantidad }}"
-                            required
-                        >
+
+<input
+    type="number"
+    name="cantidad"
+    min="1"
+    max="{{ producto.existencia }}"
+    step="1"
+    value="{{ producto.cantidad }}"
+    required
+    oninput="
+        const maximo = Number(this.max);
+
+        if (this.value !== '' && Number(this.value) > maximo) {
+            this.value = maximo;
+        }
+
+        if (Number(this.value) < 1 && this.value !== '') {
+            this.value = 1;
+        }
+    "
+>
 
                         <button type="submit">
                             Actualizar

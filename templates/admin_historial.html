@@ -44,6 +44,8 @@
             text-decoration: none;
             border-radius: 7px;
             margin-bottom: 20px;
+            border: none;
+            cursor: pointer;
         }
 
         .boton:hover {
@@ -121,7 +123,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1000px;
+            min-width: 1100px;
         }
 
         th,
@@ -146,6 +148,7 @@
             border-radius: 20px;
             font-size: 12px;
             font-weight: bold;
+            white-space: nowrap;
         }
 
         .entrada {
@@ -163,13 +166,49 @@
             color: #93c5fd;
         }
 
+        .devolucion {
+            background: #713f12;
+            color: #fde68a;
+        }
+
         .vacio {
             padding: 35px;
             text-align: center;
             color: #aab4ca;
         }
 
+        .motivo {
+            max-width: 300px;
+            overflow-wrap: anywhere;
+            color: #cbd5e1;
+        }
+
+        .contador {
+            color: #aab4ca;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .limpiar {
+            display: inline-block;
+            padding: 12px 20px;
+            background: #334155;
+            color: white;
+            text-decoration: none;
+            border-radius: 7px;
+        }
+
+        .limpiar:hover {
+            background: #475569;
+        }
+
+        .identificador {
+            color: #93c5fd;
+            font-weight: bold;
+        }
+
         @media (max-width: 600px) {
+
             body {
                 padding: 15px;
             }
@@ -180,8 +219,13 @@
 
             input,
             select,
-            button {
+            button,
+            .limpiar {
                 width: 100%;
+            }
+
+            .tarjeta p {
+                font-size: 24px;
             }
         }
     </style>
@@ -194,7 +238,7 @@
     <h1>Historial de inventario</h1>
 
     <p class="descripcion">
-        Consulta las entradas, salidas y ventas
+        Consulta las entradas, salidas, ventas y devoluciones
         realizadas en MUNDO INFORMÁTICO.
     </p>
 
@@ -226,24 +270,34 @@
             <p>{{ estadisticas.total_ventas }}</p>
         </div>
 
+        <div class="tarjeta">
+            <h3>Total de unidades movidas</h3>
+            <p>{{ estadisticas.total_unidades }}</p>
+        </div>
+
     </div>
 
     <!-- FILTROS -->
 
-    <form method="GET"
-          action="{{ url_for('admin_historial') }}"
-          class="filtros">
+    <form
+        method="GET"
+        action="{{ url_for('admin_historial') }}"
+        class="filtros"
+    >
 
         <input
             type="text"
             name="q"
-            placeholder="Buscar producto, usuario o motivo..."
+            placeholder="Buscar producto, usuario, motivo o ID..."
             value="{{ busqueda }}"
         >
 
         <select name="tipo">
 
-            <option value="">Todos los movimientos</option>
+            <option value=""
+                {% if not tipo %}selected{% endif %}>
+                Todos los movimientos
+            </option>
 
             <option value="entrada"
                 {% if tipo == 'entrada' %}selected{% endif %}>
@@ -260,23 +314,31 @@
                 Ventas
             </option>
 
+            <option value="devolucion"
+                {% if tipo == 'devolucion' %}selected{% endif %}>
+                Devoluciones por cancelación
+            </option>
+
         </select>
 
         <button type="submit">
             Buscar
         </button>
 
-        <a href="{{ url_for('admin_historial') }}"
-           class="boton"
-           style="margin:0;">
-
+        <a
+            href="{{ url_for('admin_historial') }}"
+            class="limpiar"
+        >
             Limpiar
-
         </a>
 
     </form>
 
     <!-- TABLA DE MOVIMIENTOS -->
+
+    <p class="contador">
+        Movimientos encontrados: {{ movimientos|length }}
+    </p>
 
     <div class="tabla-contenedor">
 
@@ -284,8 +346,9 @@
 
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>ID movimiento</th>
                     <th>Fecha</th>
+                    <th>ID producto</th>
                     <th>Producto</th>
                     <th>Movimiento</th>
                     <th>Cantidad</th>
@@ -302,23 +365,53 @@
 
                 <tr>
 
-                    <td>{{ movimiento.id_movimiento }}</td>
-
-                    <td>{{ movimiento.fecha_movimiento }}</td>
-
-                    <td>{{ movimiento.producto }}</td>
-
-                    <td>
-                        <span class="estado {{ movimiento.tipo_movimiento }}">
-                            {{ movimiento.tipo_movimiento | upper }}
-                        </span>
+                    <td class="identificador">
+                        #{{ movimiento.id_movimiento }}
                     </td>
 
-                    <td>{{ movimiento.cantidad }}</td>
+                    <td>
+                        {{ movimiento.fecha_movimiento }}
+                    </td>
 
-                    <td>{{ movimiento.existencia_anterior }}</td>
+                    <td>
+                        {{ movimiento.id_producto }}
+                    </td>
 
-                    <td>{{ movimiento.existencia_nueva }}</td>
+                    <td>
+                        {{ movimiento.producto }}
+                    </td>
+
+                    <td>
+
+                        {% if movimiento.tipo_movimiento == 'entrada'
+                            and movimiento.motivo
+                            and 'Devolución por cancelación' in movimiento.motivo %}
+
+                            <span class="estado devolucion">
+                                DEVOLUCIÓN
+                            </span>
+
+                        {% else %}
+
+                            <span class="estado {{ movimiento.tipo_movimiento }}">
+                                {{ movimiento.tipo_movimiento | upper }}
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+                        {{ movimiento.cantidad }}
+                    </td>
+
+                    <td>
+                        {{ movimiento.existencia_anterior }}
+                    </td>
+
+                    <td>
+                        {{ movimiento.existencia_nueva }}
+                    </td>
 
                     <td>
                         {{ movimiento.usuario }}
@@ -326,7 +419,7 @@
                         <small>{{ movimiento.perfil }}</small>
                     </td>
 
-                    <td>
+                    <td class="motivo">
                         {{ movimiento.motivo or 'Sin motivo' }}
                     </td>
 
@@ -335,7 +428,7 @@
                 {% else %}
 
                 <tr>
-                    <td colspan="9" class="vacio">
+                    <td colspan="10" class="vacio">
                         No se encontraron movimientos de inventario.
                     </td>
                 </tr>

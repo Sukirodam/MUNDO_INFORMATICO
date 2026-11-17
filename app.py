@@ -1,3 +1,4 @@
+import traceback
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from reportlab.lib.enums import TA_LEFT
@@ -180,11 +181,19 @@ def admin_nuevo_producto():
                 existencia = int(request.form.get("existencia", ""))
 
                 # El costo puede quedar vacío temporalmente.
-                costo_compra = (
-                    Decimal(costo_texto)
-                    if costo_texto
-                    else None
-                )
+                if producto["costo_compra"] is None:
+                    raise ValueError(
+                "El producto " + producto["nombre"] +
+                " no tiene un costo de compra registrado."
+                    )
+
+                costo_compra = Decimal(str(producto["costo_compra"]))
+
+                if costo_compra < 0 or costo_compra > precio:
+                    raise ValueError(
+                 "El costo de compra del producto " +
+                        producto["nombre"] + " no es válido."
+                        )
 
             except (ValueError, InvalidOperation):
                 flash("Introduce valores válidos para el producto.")
@@ -661,7 +670,6 @@ def admin_cambiar_estado_producto(id_producto):
     return redirect(url_for("admin_inventario"))
 
 
-
 # ==========================================
 # HISTORIAL DE INVENTARIO
 # ==========================================
@@ -678,9 +686,14 @@ def admin_historial():
         cursor = conexion.cursor(dictionary=True)
 
         busqueda = request.args.get("q", "").strip()
-        tipo = request.args.get("tipo", "").strip()
+        tipo = request.args.get("tipo", "").strip().lower()
 
-        tipos_permitidos = ("entrada", "salida", "venta")
+        tipos_permitidos = (
+            "entrada",
+            "salida",
+            "venta",
+            "devolucion"
+        )
 
         consulta = """
             SELECT
@@ -693,59 +706,123 @@ def admin_historial():
                 h.existencia_nueva,
                 h.motivo,
                 h.fecha_movimiento,
-                COALESCE(p.nombre, 'Producto eliminado') AS producto,
-                COALESCE(u.nombre, 'Usuario no disponible') AS usuario,
-                COALESCE(u.perfil, 'No disponible') AS perfil
+
+                COALESCE(
+                    p.nombre,
+                    'Producto eliminado'
+                ) AS producto,
+
+                COALESCE(
+                    u.nombre,
+                    'Usuario no disponible'
+                ) AS usuario,
+
+                COALESCE(
+                    u.perfil,
+                    'No disponible'
+                ) AS perfil
+
             FROM historial_inventario AS h
+
             LEFT JOIN productos AS p
                 ON h.id_producto = p.id_producto
+
             LEFT JOIN usuarios AS u
                 ON h.id_usuario = u.id_usuario
+
             WHERE 1 = 1
         """
 
         parametros = []
 
+        # BUSQUEDA
+
         if busqueda:
+
             consulta += """
                 AND (
                     p.nombre LIKE %s
                     OR h.motivo LIKE %s
                     OR u.nombre LIKE %s
+                    OR CAST(h.id_movimiento AS CHAR) LIKE %s
+                    OR CAST(h.id_producto AS CHAR) LIKE %s
                 )
             """
-            termino = f"%{busqueda}%"
-            parametros.extend([termino, termino, termino])
 
-        if tipo in tipos_permitidos:
-            consulta += " AND h.tipo_movimiento = %s"
+            termino = f"%{busqueda}%"
+
+            parametros.extend([
+                termino,
+                termino,
+                termino,
+                termino,
+                termino
+            ])
+
+        # FILTROS
+
+        if tipo == "devolucion":
+
+            consulta += """
+                AND h.tipo_movimiento = 'entrada'
+                AND h.motivo LIKE %s
+            """
+
+            parametros.append("%Devolución por cancelación%")
+
+        elif tipo in ("entrada", "salida", "venta"):
+
+            consulta += """
+                AND h.tipo_movimiento = %s
+            """
+
             parametros.append(tipo)
 
         consulta += """
-            ORDER BY h.fecha_movimiento DESC,
-                     h.id_movimiento DESC
+            ORDER BY
+                h.fecha_movimiento DESC,
+                h.id_movimiento DESC
         """
 
         cursor.execute(consulta, tuple(parametros))
+
         movimientos = cursor.fetchall()
+
+        # ESTADISTICAS GENERALES
 
         cursor.execute("""
             SELECT
                 COUNT(*) AS total_movimientos,
+
                 COALESCE(SUM(
-                    CASE WHEN tipo_movimiento = 'entrada'
-                    THEN cantidad ELSE 0 END
+                    CASE
+                        WHEN tipo_movimiento = 'entrada'
+                        THEN cantidad
+                        ELSE 0
+                    END
                 ), 0) AS total_entradas,
+
                 COALESCE(SUM(
-                    CASE WHEN tipo_movimiento = 'salida'
-                    THEN cantidad ELSE 0 END
+                    CASE
+                        WHEN tipo_movimiento = 'salida'
+                        THEN cantidad
+                        ELSE 0
+                    END
                 ), 0) AS total_salidas,
+
                 COALESCE(SUM(
-                    CASE WHEN tipo_movimiento = 'venta'
-                    THEN cantidad ELSE 0 END
-                ), 0) AS total_ventas
+                    CASE
+                        WHEN tipo_movimiento = 'venta'
+                        THEN cantidad
+                        ELSE 0
+                    END
+                ), 0) AS total_ventas,
+
+                COALESCE(SUM(cantidad), 0) AS total_unidades
+
             FROM historial_inventario
         """)
+
         estadisticas = cursor.fetchone()
 
         return render_template(
@@ -757,10 +834,13 @@ def admin_historial():
         )
 
     except Exception as error:
+
         print("ERROR AL CARGAR HISTORIAL:", error)
+
         return "No se pudo cargar el historial de inventario.", 500
 
     finally:
+
         if cursor is not None:
             cursor.close()
 
@@ -799,7 +879,7 @@ def admin_reportes():
             orden = "cantidad"
 
         # ==========================================
-        # CONDICIONES PARA PRODUCTOS Y DETALLE
+        # CONDICIONES GENERALES
         # ==========================================
 
         condiciones = [
@@ -817,7 +897,13 @@ def admin_reportes():
             parametros.append(int(anio))
 
         if busqueda:
-            condiciones.append("pr.nombre LIKE %s")
+            condiciones.append("""
+                COALESCE(
+                    NULLIF(dp.nombre_producto, ''),
+                    NULLIF(pr.nombre, ''),
+                    CONCAT('Producto #', dp.id_producto)
+                ) LIKE %s
+            """)
             parametros.append(f"%{busqueda}%")
 
         where = " AND ".join(condiciones)
@@ -840,13 +926,16 @@ def admin_reportes():
 
         cursor.execute(f"""
             SELECT
-                pr.id_producto,
-                pr.nombre AS producto,
+                dp.id_producto,
 
                 COALESCE(
-                    SUM(dp.cantidad),
-                    0
-                ) AS unidades_vendidas,
+                    NULLIF(dp.nombre_producto, ''),
+                    NULLIF(pr.nombre, ''),
+                    CONCAT('Producto #', dp.id_producto)
+                ) AS producto,
+
+                COALESCE(SUM(dp.cantidad), 0)
+                    AS unidades_vendidas,
 
                 COALESCE(
                     SUM(dp.cantidad * dp.precio_unitario),
@@ -858,14 +947,18 @@ def admin_reportes():
             INNER JOIN pedidos AS p
                 ON dp.id_pedido = p.id_pedido
 
-            INNER JOIN productos AS pr
+            LEFT JOIN productos AS pr
                 ON dp.id_producto = pr.id_producto
 
             WHERE {where}
 
             GROUP BY
-                pr.id_producto,
-                pr.nombre
+                dp.id_producto,
+                COALESCE(
+                    NULLIF(dp.nombre_producto, ''),
+                    NULLIF(pr.nombre, ''),
+                    CONCAT('Producto #', dp.id_producto)
+                )
 
             ORDER BY {orden_sql}
         """, tuple(parametros))
@@ -875,22 +968,6 @@ def admin_reportes():
         # ==========================================
         # RESUMEN GENERAL
         # ==========================================
-
-        condiciones_resumen = [
-            "p.estado IN ('pagado', 'enviado', 'entregado')"
-        ]
-
-        parametros_resumen = []
-
-        if mes:
-            condiciones_resumen.append("MONTH(p.fecha_pedido) = %s")
-            parametros_resumen.append(int(mes))
-
-        if anio:
-            condiciones_resumen.append("YEAR(p.fecha_pedido) = %s")
-            parametros_resumen.append(int(anio))
-
-        where_resumen = " AND ".join(condiciones_resumen)
 
         cursor.execute(f"""
             SELECT
@@ -943,17 +1020,17 @@ def admin_reportes():
             LEFT JOIN detalle_pedido AS dp
                 ON p.id_pedido = dp.id_pedido
 
-            WHERE {where_resumen}
-        """, tuple(parametros_resumen))
+            LEFT JOIN productos AS pr
+                ON dp.id_producto = pr.id_producto
+
+            WHERE {where}
+        """, tuple(parametros))
 
         resumen = cursor.fetchone()
 
         # ==========================================
         # INGRESOS Y GANANCIAS MENSUALES
         # ==========================================
-        # Esta consulta respeta el año y la búsqueda
-        # del producto, pero muestra todos los meses.
-        # El filtro de mes no se aplica aquí.
 
         condiciones_mensuales = [
             "p.estado IN ('pagado', 'enviado', 'entregado')"
@@ -962,11 +1039,19 @@ def admin_reportes():
         parametros_mensuales = []
 
         if anio:
-            condiciones_mensuales.append("YEAR(p.fecha_pedido) = %s")
+            condiciones_mensuales.append(
+                "YEAR(p.fecha_pedido) = %s"
+            )
             parametros_mensuales.append(int(anio))
 
         if busqueda:
-            condiciones_mensuales.append("pr.nombre LIKE %s")
+            condiciones_mensuales.append("""
+                COALESCE(
+                    NULLIF(dp.nombre_producto, ''),
+                    NULLIF(pr.nombre, ''),
+                    CONCAT('Producto #', dp.id_producto)
+                ) LIKE %s
+            """)
             parametros_mensuales.append(f"%{busqueda}%")
 
         where_mensual = " AND ".join(condiciones_mensuales)
@@ -984,7 +1069,8 @@ def admin_reportes():
                 CASE
                     WHEN SUM(
                         CASE
-                            WHEN dp.costo_unitario IS NULL THEN 1
+                            WHEN dp.costo_unitario IS NULL
+                            THEN 1
                             ELSE 0
                         END
                     ) > 0
@@ -1001,7 +1087,8 @@ def admin_reportes():
 
                 SUM(
                     CASE
-                        WHEN dp.costo_unitario IS NULL THEN 1
+                        WHEN dp.costo_unitario IS NULL
+                        THEN 1
                         ELSE 0
                     END
                 ) AS ventas_sin_costo
@@ -1011,7 +1098,7 @@ def admin_reportes():
             INNER JOIN pedidos AS p
                 ON dp.id_pedido = p.id_pedido
 
-            INNER JOIN productos AS pr
+            LEFT JOIN productos AS pr
                 ON dp.id_producto = pr.id_producto
 
             WHERE {where_mensual}
@@ -1036,7 +1123,13 @@ def admin_reportes():
                 p.id_pedido,
                 p.fecha_pedido,
                 u.nombre AS comprador,
-                pr.nombre AS producto,
+
+                COALESCE(
+                    NULLIF(dp.nombre_producto, ''),
+                    NULLIF(pr.nombre, ''),
+                    CONCAT('Producto #', dp.id_producto)
+                ) AS producto,
+
                 dp.cantidad,
                 dp.precio_unitario,
                 dp.costo_unitario,
@@ -1060,7 +1153,7 @@ def admin_reportes():
             INNER JOIN pedidos AS p
                 ON dp.id_pedido = p.id_pedido
 
-            INNER JOIN productos AS pr
+            LEFT JOIN productos AS pr
                 ON dp.id_producto = pr.id_producto
 
             LEFT JOIN usuarios AS u
@@ -1080,9 +1173,13 @@ def admin_reportes():
         # ==========================================
 
         cursor.execute("""
-            SELECT DISTINCT YEAR(fecha_pedido) AS anio
+            SELECT DISTINCT
+                YEAR(fecha_pedido) AS anio
+
             FROM pedidos
+
             WHERE fecha_pedido IS NOT NULL
+
             ORDER BY anio DESC
         """)
 
@@ -1093,7 +1190,7 @@ def admin_reportes():
         ]
 
         # ==========================================
-        # ENVIAR INFORMACIÓN A LA PLANTILLA
+        # MOSTRAR REPORTES
         # ==========================================
 
         return render_template(
@@ -1112,6 +1209,10 @@ def admin_reportes():
     except Exception as error:
 
         print("ERROR AL GENERAR REPORTES:", error)
+
+        import traceback
+        traceback.print_exc()
+
         return "No se pudieron generar los reportes.", 500
 
     finally:
@@ -1121,6 +1222,7 @@ def admin_reportes():
 
         if conexion is not None and conexion.is_connected():
             conexion.close()
+
 
 
 @app.route("/admin/reportes/pdf")
@@ -1326,7 +1428,13 @@ def admin_reportes_pdf():
             parametros_mensuales.append(int(anio))
 
         if busqueda:
-            condiciones_mensuales.append("pr.nombre LIKE %s")
+            condiciones_mensuales.append("""
+                COALESCE(
+                    NULLIF(dp.nombre_producto, ''),
+                    NULLIF(pr.nombre, ''),
+                    CONCAT('Producto #', dp.id_producto)
+                ) LIKE %s
+            """)
             parametros_mensuales.append(f"%{busqueda}%")
 
         where_mensual = " AND ".join(condiciones_mensuales)
@@ -1349,7 +1457,6 @@ def admin_reportes_pdf():
                         END
                     ) > 0
                     THEN NULL
-
                     ELSE COALESCE(
                         SUM(
                             dp.cantidad *
@@ -1371,7 +1478,7 @@ def admin_reportes_pdf():
             INNER JOIN pedidos AS p
                 ON dp.id_pedido = p.id_pedido
 
-            INNER JOIN productos AS pr
+            LEFT JOIN productos AS pr
                 ON dp.id_producto = pr.id_producto
 
             WHERE {where_mensual}
@@ -1396,7 +1503,13 @@ def admin_reportes_pdf():
                 p.id_pedido,
                 p.fecha_pedido,
                 u.nombre AS comprador,
-                pr.nombre AS producto,
+
+                COALESCE(
+                    NULLIF(dp.nombre_producto, ''),
+                    NULLIF(pr.nombre, ''),
+                    CONCAT('Producto #', dp.id_producto)
+                ) AS producto,
+
                 dp.cantidad,
                 dp.precio_unitario,
                 dp.costo_unitario,
@@ -1420,7 +1533,7 @@ def admin_reportes_pdf():
             INNER JOIN pedidos AS p
                 ON dp.id_pedido = p.id_pedido
 
-            INNER JOIN productos AS pr
+            LEFT JOIN productos AS pr
                 ON dp.id_producto = pr.id_producto
 
             LEFT JOIN usuarios AS u
@@ -2086,6 +2199,7 @@ def agregar_carrito(id_producto):
     cursor = None
 
     try:
+
         conexion = obtener_conexion()
         cursor = conexion.cursor(dictionary=True)
 
@@ -2101,17 +2215,52 @@ def agregar_carrito(id_producto):
             flash("El producto no está disponible.")
             return redirect(url_for("inicio"))
 
+        if producto["existencia"] <= 0:
+            flash("Este producto no tiene existencias.")
+            return redirect(url_for("inicio"))
+
+        # ======================================
+        # VALIDAR CARRITO DE LA SESIÓN
+        # ======================================
+
         carrito = session.get("carrito", {})
+
+        if not isinstance(carrito, dict):
+            carrito = {}
+
         id_texto = str(id_producto)
 
         cantidad_actual = carrito.get(id_texto, 0)
 
+        if isinstance(cantidad_actual, bool):
+            cantidad_actual = 0
+
+        elif isinstance(cantidad_actual, str):
+            if cantidad_actual.isascii() and cantidad_actual.isdecimal():
+                cantidad_actual = int(cantidad_actual)
+            else:
+                cantidad_actual = 0
+
+        elif not isinstance(cantidad_actual, int):
+            cantidad_actual = 0
+
+        if cantidad_actual < 0:
+            cantidad_actual = 0
+
+        # ======================================
+        # COMPROBAR EXISTENCIAS
+        # ======================================
+
         if cantidad_actual >= producto["existencia"]:
+
             flash("No hay más existencias disponibles.")
 
         else:
+
             carrito[id_texto] = cantidad_actual + 1
+
             session["carrito"] = carrito
+
             flash("Producto agregado al carrito.")
 
         return redirect(url_for("inicio"))
@@ -2119,7 +2268,9 @@ def agregar_carrito(id_producto):
     except Exception as error:
 
         print("ERROR AL AGREGAR AL CARRITO:", error)
+
         flash("No se pudo agregar el producto.")
+
         return redirect(url_for("inicio"))
 
     finally:
@@ -2130,10 +2281,12 @@ def agregar_carrito(id_producto):
         if conexion is not None and conexion.is_connected():
             conexion.close()
 
-
 # ==========================================
 # MOSTRAR CARRITO
 # ==========================================
+
+from decimal import Decimal
+
 
 @app.route("/carrito")
 def ver_carrito():
@@ -2142,24 +2295,71 @@ def ver_carrito():
     cursor = None
 
     try:
+
         carrito = session.get("carrito", {})
 
+        if not isinstance(carrito, dict):
+            carrito = {}
+
+        # ======================================
+        # VALIDAR DATOS DE LA SESIÓN
+        # ======================================
+
+        carrito_validado = {}
+
+        for id_producto, cantidad in carrito.items():
+
+            id_texto = str(id_producto)
+
+            if not id_texto.isascii() or not id_texto.isdecimal():
+                continue
+
+            if isinstance(cantidad, bool):
+                continue
+
+            if isinstance(cantidad, int):
+                cantidad = cantidad
+            elif isinstance(cantidad, str) and cantidad.isascii() and cantidad.isdecimal():
+                cantidad = int(cantidad)
+            else:
+                continue
+
+            id_numero = int(id_texto)
+
+            if id_numero > 0 and cantidad > 0:
+                carrito_validado[str(id_numero)] = cantidad
+
+        carrito = carrito_validado
+
         if not carrito:
+
+            session["carrito"] = {}
+
             return render_template(
                 "carrito.html",
                 productos=[],
-                total=0,
+                total=Decimal("0.00"),
                 cantidad_carrito=0
             )
+
+        # ======================================
+        # CONSULTAR PRODUCTOS EN MYSQL
+        # ======================================
 
         conexion = obtener_conexion()
         cursor = conexion.cursor(dictionary=True)
 
         ids = list(carrito.keys())
+
         marcadores = ", ".join(["%s"] * len(ids))
 
         consulta = f"""
-            SELECT id_producto, nombre, precio, existencia, imagen
+            SELECT
+                id_producto,
+                nombre,
+                precio,
+                existencia,
+                imagen
             FROM productos
             WHERE id_producto IN ({marcadores})
             AND activo = TRUE
@@ -2172,8 +2372,12 @@ def ver_carrito():
 
         productos_db = cursor.fetchall()
 
+        # ======================================
+        # CALCULAR CANTIDADES Y SUBTOTALES
+        # ======================================
+
         productos = []
-        total = 0
+        total = Decimal("0.00")
         carrito_actualizado = {}
 
         for producto in productos_db:
@@ -2190,18 +2394,29 @@ def ver_carrito():
 
             producto["cantidad"] = cantidad
 
-            producto["subtotal"] = (
-                float(producto["precio"]) * cantidad
-            )
+            precio = Decimal(str(producto["precio"]))
+
+            producto["subtotal"] = precio * cantidad
 
             total += producto["subtotal"]
 
             productos.append(producto)
+
             carrito_actualizado[id_texto] = cantidad
+
+        # ======================================
+        # ACTUALIZAR CARRITO EN SESIÓN
+        # ======================================
 
         session["carrito"] = carrito_actualizado
 
-        cantidad_carrito = sum(carrito_actualizado.values())
+        cantidad_carrito = sum(
+            carrito_actualizado.values()
+        )
+
+        # ======================================
+        # MOSTRAR CARRITO
+        # ======================================
 
         return render_template(
             "carrito.html",
@@ -2213,6 +2428,7 @@ def ver_carrito():
     except Exception as error:
 
         print("ERROR AL MOSTRAR CARRITO:", error)
+
         return f"Error al mostrar el carrito: {error}", 500
 
     finally:
@@ -2238,20 +2454,37 @@ def actualizar_carrito(id_producto):
     cursor = None
 
     try:
-        cantidad = int(request.form.get("cantidad", 1))
+
+        # ======================================
+        # VALIDAR CANTIDAD RECIBIDA
+        # ======================================
+
+        cantidad_texto = request.form.get("cantidad", "").strip()
+
+        if not cantidad_texto or not cantidad_texto.isascii() or not cantidad_texto.isdecimal():
+            flash("Introduce una cantidad entera válida.")
+            return redirect(url_for("ver_carrito"))
+
+        cantidad = int(cantidad_texto)
 
         if cantidad < 1:
             flash("La cantidad debe ser mayor a cero.")
             return redirect(url_for("ver_carrito"))
 
+        # ======================================
+        # CONSULTAR EXISTENCIAS
+        # ======================================
+
         conexion = obtener_conexion()
         cursor = conexion.cursor(dictionary=True)
 
         cursor.execute("""
-            SELECT existencia
+            SELECT
+                id_producto,
+                existencia,
+                activo
             FROM productos
             WHERE id_producto = %s
-            AND activo = TRUE
         """, (id_producto,))
 
         producto = cursor.fetchone()
@@ -2259,22 +2492,45 @@ def actualizar_carrito(id_producto):
         carrito = session.get("carrito", {})
         id_texto = str(id_producto)
 
-        if not producto:
+        if not producto or not producto["activo"]:
+
             carrito.pop(id_texto, None)
+            session["carrito"] = carrito
+
             flash("El producto ya no está disponible.")
+            return redirect(url_for("ver_carrito"))
 
-        else:
-            cantidad = min(cantidad, producto["existencia"])
+        # ======================================
+        # VALIDAR EXISTENCIAS
+        # ======================================
 
-            if cantidad == 0:
-                carrito.pop(id_texto, None)
-                flash("El producto no tiene existencias.")
+        if producto["existencia"] <= 0:
 
-            else:
-                carrito[id_texto] = cantidad
-                flash("Cantidad actualizada.")
+            carrito.pop(id_texto, None)
+            session["carrito"] = carrito
+
+            flash("El producto no tiene existencias.")
+            return redirect(url_for("ver_carrito"))
+
+        if cantidad > producto["existencia"]:
+
+            flash(
+                "Solo hay "
+                + str(producto["existencia"])
+                + " unidades disponibles."
+            )
+
+            return redirect(url_for("ver_carrito"))
+
+        # ======================================
+        # ACTUALIZAR CARRITO
+        # ======================================
+
+        carrito[id_texto] = cantidad
 
         session["carrito"] = carrito
+
+        flash("Cantidad actualizada correctamente.")
 
         return redirect(url_for("ver_carrito"))
 
@@ -2286,6 +2542,7 @@ def actualizar_carrito(id_producto):
     except Exception as error:
 
         print("ERROR AL ACTUALIZAR CARRITO:", error)
+
         flash("No se pudo actualizar la cantidad.")
         return redirect(url_for("ver_carrito"))
 
@@ -2296,7 +2553,6 @@ def actualizar_carrito(id_producto):
 
         if conexion is not None and conexion.is_connected():
             conexion.close()
-
 
 # ==========================================
 # ELIMINAR PRODUCTO DEL CARRITO
@@ -2309,11 +2565,23 @@ def actualizar_carrito(id_producto):
 def eliminar_carrito(id_producto):
 
     carrito = session.get("carrito", {})
-    carrito.pop(str(id_producto), None)
 
-    session["carrito"] = carrito
+    if not isinstance(carrito, dict):
+        carrito = {}
 
-    flash("Producto eliminado del carrito.")
+    id_texto = str(id_producto)
+
+    if id_texto in carrito:
+
+        carrito.pop(id_texto)
+
+        session["carrito"] = carrito
+
+        flash("Producto eliminado del carrito.")
+
+    else:
+
+        flash("El producto no se encontró en tu carrito.")
 
     return redirect(url_for("ver_carrito"))
 
@@ -2322,12 +2590,28 @@ def eliminar_carrito(id_producto):
 # VACIAR CARRITO
 # ==========================================
 
-@app.route("/vaciar-carrito", methods=["POST"])
+@app.route(
+    "/vaciar-carrito",
+    methods=["POST"]
+)
 def vaciar_carrito():
 
-    session["carrito"] = {}
+    carrito = session.get("carrito", {})
 
-    flash("El carrito está vacío.")
+    if not isinstance(carrito, dict):
+        carrito = {}
+
+    if carrito:
+
+        session["carrito"] = {}
+
+        flash("Tu carrito se vació correctamente.")
+
+    else:
+
+        session["carrito"] = {}
+
+        flash("Tu carrito ya estaba vacío.")
 
     return redirect(url_for("ver_carrito"))
 
@@ -2463,7 +2747,19 @@ def login():
             """, (correo,))
 
             usuario = cursor.fetchone()
-
+            if usuario:
+                print("DEBUG LOGIN:")
+                print("Correo encontrado:", usuario["correo"])
+                print("Longitud del hash:", len(usuario["contrasena"]))
+                print(
+        "Contraseña coincide:",
+        check_password_hash(
+            usuario["contrasena"],
+            contrasena
+        )
+    )
+            else:
+                print(": correo no encontrado")
             if usuario and check_password_hash(
                 usuario["contrasena"],
                 contrasena
@@ -2536,7 +2832,8 @@ def finalizar_compra():
 
     carrito = session.get("carrito", {})
 
-    if not carrito:
+    if not isinstance(carrito, dict) or not carrito:
+        session["carrito"] = {}
         flash("Tu carrito está vacío.")
         return redirect(url_for("ver_carrito"))
 
@@ -2544,10 +2841,54 @@ def finalizar_compra():
     cursor = None
 
     try:
+
+        # ======================================
+        # VALIDAR DATOS DEL CARRITO
+        # ======================================
+
+        carrito_validado = {}
+
+        for id_producto, cantidad in carrito.items():
+
+            id_texto = str(id_producto)
+
+            if not id_texto.isascii() or not id_texto.isdecimal():
+                continue
+
+            if isinstance(cantidad, bool):
+                continue
+
+            if isinstance(cantidad, int):
+                cantidad = cantidad
+
+            elif isinstance(cantidad, str):
+                if cantidad.isascii() and cantidad.isdecimal():
+                    cantidad = int(cantidad)
+                else:
+                    continue
+
+            else:
+                continue
+
+            if int(id_texto) > 0 and cantidad > 0:
+                carrito_validado[id_texto] = cantidad
+
+        if not carrito_validado:
+            session["carrito"] = {}
+            flash("Tu carrito no contiene productos válidos.")
+            return redirect(url_for("ver_carrito"))
+
+        carrito = carrito_validado
+
+        # ======================================
+        # CONSULTAR PRODUCTOS
+        # ======================================
+
         conexion = obtener_conexion()
         cursor = conexion.cursor(dictionary=True)
 
         ids = [int(i) for i in carrito.keys()]
+
         marcadores = ", ".join(["%s"] * len(ids))
 
         cursor.execute(f"""
@@ -2565,8 +2906,13 @@ def finalizar_compra():
         productos_db = cursor.fetchall()
 
         if len(productos_db) != len(carrito):
+
             flash("Uno o más productos ya no están disponibles.")
             return redirect(url_for("ver_carrito"))
+
+        # ======================================
+        # CALCULAR TOTAL Y VALIDAR EXISTENCIAS
+        # ======================================
 
         productos = []
         total = Decimal("0.00")
@@ -2574,17 +2920,29 @@ def finalizar_compra():
         for producto in productos_db:
 
             id_texto = str(producto["id_producto"])
-            cantidad = int(carrito.get(id_texto, 0))
+
+            cantidad = carrito.get(id_texto, 0)
 
             if cantidad <= 0:
                 continue
 
+            if producto["existencia"] <= 0:
+
+                flash(
+                    producto["nombre"]
+                    + " ya no tiene existencias."
+                )
+
+                return redirect(url_for("ver_carrito"))
+
             if cantidad > producto["existencia"]:
+
                 flash(
                     "La cantidad disponible de "
                     + producto["nombre"]
                     + " ha cambiado. Revisa tu carrito."
                 )
+
                 return redirect(url_for("ver_carrito"))
 
             producto["cantidad"] = cantidad
@@ -2594,7 +2952,20 @@ def finalizar_compra():
             )
 
             total += producto["subtotal"]
+
             productos.append(producto)
+
+        if not productos:
+
+            session["carrito"] = {}
+
+            flash("No hay productos disponibles para comprar.")
+
+            return redirect(url_for("ver_carrito"))
+
+        # ======================================
+        # MOSTRAR FORMULARIO DE COMPRA
+        # ======================================
 
         return render_template(
             "compra.html",
@@ -2605,7 +2976,9 @@ def finalizar_compra():
     except Exception as error:
 
         print("ERROR AL PREPARAR COMPRA:", error)
+
         flash("No se pudo cargar el formulario de compra.")
+
         return redirect(url_for("ver_carrito"))
 
     finally:
@@ -2616,12 +2989,9 @@ def finalizar_compra():
         if conexion is not None and conexion.is_connected():
             conexion.close()
 
-
 # ==========================================
 # CONFIRMAR Y REGISTRAR PEDIDO
 # ==========================================
-
-
 
 @app.route("/confirmar-pedido", methods=["POST"])
 def confirmar_pedido():
@@ -2642,40 +3012,92 @@ def confirmar_pedido():
     direccion = request.form.get("direccion_entrega", "").strip()
     referencias = request.form.get("referencias", "").strip()
 
-    # Ladas permitidas en el formulario.
     ladas_permitidas = {
         "+52", "+1", "+502", "+34", "+57", "+54"
     }
+
+    # ======================================
+    # VALIDAR CAMPOS OBLIGATORIOS
+    # ======================================
 
     if not nombre or not telefono or not direccion:
         flash("Completa todos los datos obligatorios.")
         return redirect(url_for("finalizar_compra"))
 
-    # Validar lada internacional.
+    # ======================================
+    # VALIDAR NOMBRE DEL RECEPTOR
+    # ======================================
+
+    caracteres_permitidos = {" ", "-", "'", "’"}
+
+    if (
+        len(nombre) > 150
+        or not any(caracter.isalpha() for caracter in nombre)
+        or not all(
+            caracter.isalpha() or caracter in caracteres_permitidos
+            for caracter in nombre
+        )
+        or not nombre[0].isalpha()
+        or not nombre[-1].isalpha()
+    ):
+        flash(
+            "El nombre solo puede contener letras, acentos, "
+            "espacios, guiones y apóstrofos."
+        )
+        return redirect(url_for("finalizar_compra"))
+
+    # Evitar separadores consecutivos.
+    for anterior, actual in zip(nombre, nombre[1:]):
+
+        if (
+            anterior in caracteres_permitidos
+            and actual in caracteres_permitidos
+        ):
+            flash("El nombre no puede tener separadores consecutivos.")
+            return redirect(url_for("finalizar_compra"))
+
+    # ======================================
+    # VALIDAR LADA INTERNACIONAL
+    # ======================================
+
     if lada not in ladas_permitidas:
         flash("Selecciona una lada internacional válida.")
         return redirect(url_for("finalizar_compra"))
 
-    # Validar que el teléfono tenga únicamente dígitos.
-    if (
-        not telefono.isascii()
-        or not telefono.isdecimal()
-        or not 1 <= len(telefono) <= 10
-    ):
-        flash("El teléfono debe contener entre 1 y 10 dígitos.")
+    # ======================================
+    # VALIDAR TELÉFONO
+    # ======================================
+
+    if not telefono.isascii() or not telefono.isdecimal():
+        flash("El teléfono debe contener únicamente números.")
         return redirect(url_for("finalizar_compra"))
 
-    # Combinar lada internacional y número telefónico.
+    digitos_totales = lada[1:] + telefono
+
+    if not 8 <= len(digitos_totales) <= 15:
+        flash(
+            "El número telefónico debe tener entre 8 y 15 dígitos "
+            "incluyendo la lada internacional."
+        )
+        return redirect(url_for("finalizar_compra"))
+
     telefono_completo = f"{lada} {telefono}"
 
-    if (
-        len(nombre) > 150
-        or len(telefono_completo) > 20
-        or len(direccion) > 500
-        or len(referencias) > 500
-    ):
-        flash("Uno de los datos supera la longitud permitida.")
+    # ======================================
+    # VALIDAR DIRECCIÓN Y REFERENCIAS
+    # ======================================
+
+    if len(direccion) < 5 or len(direccion) > 500:
+        flash("La dirección debe tener entre 5 y 500 caracteres.")
         return redirect(url_for("finalizar_compra"))
+
+    if len(referencias) > 500:
+        flash("Las referencias no pueden superar los 500 caracteres.")
+        return redirect(url_for("finalizar_compra"))
+
+    # ======================================
+    # CONEXIÓN Y REGISTRO DEL PEDIDO
+    # ======================================
 
     conexion = None
     cursor = None
@@ -2696,7 +3118,8 @@ def confirmar_pedido():
                 precio,
                 costo_compra,
                 existencia,
-                activo
+                activo,
+                imagen
             FROM productos
             WHERE id_producto IN ({marcadores})
             FOR UPDATE
@@ -2728,8 +3151,6 @@ def confirmar_pedido():
 
             precio = Decimal(str(producto["precio"]))
 
-            # Guardar el costo de adquisición del producto.
-            # Si todavía no tiene costo registrado, conservar NULL.
             costo_compra = (
                 Decimal(str(producto["costo_compra"]))
                 if producto["costo_compra"] is not None
@@ -2740,12 +3161,18 @@ def confirmar_pedido():
 
             productos_compra.append({
                 "id_producto": producto["id_producto"],
+                "nombre": producto["nombre"],
                 "cantidad": cantidad,
                 "precio": precio,
                 "costo_compra": costo_compra,
+                "imagen": producto["imagen"],
                 "existencia_anterior": producto["existencia"],
                 "existencia_nueva": producto["existencia"] - cantidad
             })
+
+        # ======================================
+        # REGISTRAR PEDIDO
+        # ======================================
 
         cursor.execute("""
             INSERT INTO pedidos (
@@ -2773,21 +3200,28 @@ def confirmar_pedido():
 
         id_pedido = cursor.lastrowid
 
+        # ======================================
+        # REGISTRAR DETALLES, IMÁGENES E INVENTARIO
+        # ======================================
+
         for producto in productos_compra:
 
-            # Guardar precio de venta y costo histórico.
             cursor.execute("""
                 INSERT INTO detalle_pedido (
                     id_pedido,
                     id_producto,
+                    nombre_producto,
+                    imagen,
                     cantidad,
                     precio_unitario,
                     costo_unitario
                 )
-                VALUES (%s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (
                 id_pedido,
                 producto["id_producto"],
+                producto["nombre"],
+                producto["imagen"],
                 producto["cantidad"],
                 producto["precio"],
                 producto["costo_compra"]
@@ -2809,7 +3243,7 @@ def confirmar_pedido():
                     "No se pudieron actualizar las existencias."
                 )
 
-            # Registrar la salida generada por la venta.
+            # Registrar salida en el historial de inventario.
             cursor.execute("""
                 INSERT INTO historial_inventario (
                     id_producto,
@@ -2882,12 +3316,21 @@ def pedido_confirmado(id_pedido):
         flash("Inicia sesión para consultar tu pedido.")
         return redirect(url_for("login"))
 
+    if id_pedido <= 0:
+        flash("El número de pedido no es válido.")
+        return redirect(url_for("inicio"))
+
     conexion = None
     cursor = None
 
     try:
+
         conexion = obtener_conexion()
         cursor = conexion.cursor(dictionary=True)
+
+        # ======================================
+        # CONSULTAR PEDIDO DEL USUARIO
+        # ======================================
 
         cursor.execute("""
             SELECT
@@ -2912,23 +3355,53 @@ def pedido_confirmado(id_pedido):
             flash("No se encontró el pedido solicitado.")
             return redirect(url_for("inicio"))
 
+        # ======================================
+        # CONSULTAR PRODUCTOS DEL PEDIDO
+        # ======================================
+
         cursor.execute("""
-            SELECT
-                p.nombre,
-                dp.cantidad,
-                dp.precio_unitario,
-                (dp.cantidad * dp.precio_unitario) AS subtotal
-            FROM detalle_pedido AS dp
-            INNER JOIN productos AS p
-                ON dp.id_producto = p.id_producto
-            WHERE dp.id_pedido = %s
-        """, (id_pedido,))
+    SELECT
+        COALESCE(
+            dp.nombre_producto,
+            p.nombre,
+            'Producto no disponible'
+        ) AS nombre,
+        dp.imagen,
+        dp.cantidad,
+        dp.precio_unitario,
+        (dp.cantidad * dp.precio_unitario) AS subtotal
+    FROM detalle_pedido AS dp
+    LEFT JOIN productos AS p
+        ON dp.id_producto = p.id_producto
+    WHERE dp.id_pedido = %s
+""", (id_pedido,))
 
         productos = cursor.fetchall()
 
         if not productos:
             flash("El pedido no contiene productos.")
             return redirect(url_for("inicio"))
+
+        # ======================================
+        # PREPARAR IMPORTES
+        # ======================================
+
+        for producto in productos:
+
+            producto["precio_unitario"] = Decimal(
+                str(producto["precio_unitario"])
+            )
+
+            producto["subtotal"] = (
+                producto["precio_unitario"]
+                * producto["cantidad"]
+            )
+
+        pedido["total"] = Decimal(str(pedido["total"]))
+
+        # ======================================
+        # MOSTRAR COMPROBANTE
+        # ======================================
 
         return render_template(
             "pedido_confirmado.html",
@@ -2939,7 +3412,10 @@ def pedido_confirmado(id_pedido):
     except Exception as error:
 
         print("ERROR AL MOSTRAR COMPROBANTE:", error)
-        return "Error al generar el comprobante del pedido.", 500
+
+        flash("No se pudo generar el comprobante del pedido.")
+
+        return redirect(url_for("inicio"))
 
     finally:
 
@@ -2948,7 +3424,6 @@ def pedido_confirmado(id_pedido):
 
         if conexion is not None and conexion.is_connected():
             conexion.close()
-
 
 # ==========================================
 # PANEL PRINCIPAL DE ADMINISTRACIÓN
@@ -3047,10 +3522,26 @@ def admin_pedidos():
     cursor = None
 
     try:
+        # Obtener filtros del formulario
+        busqueda = request.args.get("buscar", "").strip()
+        estado = request.args.get("estado", "").strip().lower()
+
+        # Estados permitidos
+        estados_validos = [
+            "pendiente",
+            "pagado",
+            "enviado",
+            "entregado",
+            "cancelado"
+        ]
+
+        if estado not in estados_validos:
+            estado = ""
+
         conexion = obtener_conexion()
         cursor = conexion.cursor(dictionary=True)
 
-        cursor.execute("""
+        consulta = """
             SELECT
                 p.id_pedido,
                 p.fecha_pedido,
@@ -3062,14 +3553,52 @@ def admin_pedidos():
             FROM pedidos AS p
             INNER JOIN usuarios AS u
                 ON p.id_usuario = u.id_usuario
+            WHERE 1=1
+        """
+
+        parametros = []
+
+        # Buscar por número, nombre o correo
+        if busqueda:
+
+            consulta += """
+                AND (
+                    CAST(p.id_pedido AS CHAR) LIKE %s
+                    OR u.nombre LIKE %s
+                    OR u.correo LIKE %s
+                )
+            """
+
+            termino = f"%{busqueda}%"
+
+            parametros.extend([
+                termino,
+                termino,
+                termino
+            ])
+
+        # Filtrar por estado
+        if estado:
+
+            consulta += """
+                AND p.estado = %s
+            """
+
+            parametros.append(estado)
+
+        consulta += """
             ORDER BY p.id_pedido DESC
-        """)
+        """
+
+        cursor.execute(consulta, parametros)
 
         pedidos = cursor.fetchall()
 
         return render_template(
             "admin_pedidos.html",
-            pedidos=pedidos
+            pedidos=pedidos,
+            busqueda=busqueda,
+            estado_seleccionado=estado
         )
 
     except Exception as error:
@@ -3085,7 +3614,6 @@ def admin_pedidos():
         if conexion is not None and conexion.is_connected():
             conexion.close()
 
-
 # ==========================================
 # DETALLES DE UN PEDIDO
 # ==========================================
@@ -3100,6 +3628,10 @@ def admin_detalle_pedido(id_pedido):
     try:
         conexion = obtener_conexion()
         cursor = conexion.cursor(dictionary=True)
+
+        # ======================================
+        # INFORMACIÓN DEL PEDIDO
+        # ======================================
 
         cursor.execute("""
             SELECT
@@ -3118,16 +3650,41 @@ def admin_detalle_pedido(id_pedido):
             flash("El pedido solicitado no existe.")
             return redirect(url_for("admin_pedidos"))
 
+        # ======================================
+        # PRODUCTOS E IMÁGENES HISTÓRICAS
+        # ======================================
+
         cursor.execute("""
             SELECT
-                p.nombre,
+                dp.id_detalle,
+                dp.id_producto,
+
+                COALESCE(
+                    NULLIF(dp.nombre_producto, ''),
+                    NULLIF(p.nombre, ''),
+                    CONCAT('Producto #', dp.id_producto)
+                ) AS nombre,
+
+                COALESCE(
+                    NULLIF(dp.imagen, ''),
+                    p.imagen
+                ) AS imagen,
+
                 dp.cantidad,
                 dp.precio_unitario,
-                (dp.cantidad * dp.precio_unitario) AS subtotal
+
+                (
+                    dp.cantidad * dp.precio_unitario
+                ) AS subtotal
+
             FROM detalle_pedido AS dp
-            INNER JOIN productos AS p
+
+            LEFT JOIN productos AS p
                 ON dp.id_producto = p.id_producto
+
             WHERE dp.id_pedido = %s
+
+            ORDER BY dp.id_detalle ASC
         """, (id_pedido,))
 
         productos = cursor.fetchall()
@@ -3141,6 +3698,7 @@ def admin_detalle_pedido(id_pedido):
     except Exception as error:
 
         print("ERROR AL CONSULTAR DETALLE:", error)
+
         return "No se pudo consultar el pedido.", 500
 
     finally:
@@ -3151,11 +3709,8 @@ def admin_detalle_pedido(id_pedido):
         if conexion is not None and conexion.is_connected():
             conexion.close()
 
-
-
-
 # ==========================================
-# ACTUALIZAR ESTADO DEL PEDIDO
+# ACTUALIZAR ESTADO DE UN PEDIDO
 # ==========================================
 
 @app.route(
@@ -3169,10 +3724,16 @@ def admin_actualizar_estado(id_pedido):
     cursor = None
 
     try:
-        nuevo_estado = request.form.get("estado", "").strip()
+        nuevo_estado = request.form.get("estado", "").strip().lower()
 
-        # Solamente se permite confirmar o cancelar.
-        if nuevo_estado not in ("confirmado", "cancelado"):
+        estados_validos = (
+            "pagado",
+            "enviado",
+            "entregado",
+            "cancelado"
+        )
+
+        if nuevo_estado not in estados_validos:
             flash("Acción no válida.")
             return redirect(
                 url_for("admin_detalle_pedido", id_pedido=id_pedido)
@@ -3183,7 +3744,10 @@ def admin_actualizar_estado(id_pedido):
 
         conexion.start_transaction()
 
-        # Bloquear el pedido para evitar modificaciones simultáneas.
+        # ======================================
+        # BLOQUEAR Y CONSULTAR PEDIDO
+        # ======================================
+
         cursor.execute("""
             SELECT id_pedido, estado
             FROM pedidos
@@ -3196,47 +3760,36 @@ def admin_actualizar_estado(id_pedido):
         if not pedido:
             raise ValueError("El pedido no existe.")
 
-        # Solo se permiten acciones sobre pedidos pendientes.
-        if pedido["estado"] != "pendiente":
+        estado_actual = pedido["estado"]
+
+        # ======================================
+        # VALIDAR TRANSICIONES
+        # ======================================
+
+        transiciones = {
+            "pendiente": ("pagado", "cancelado"),
+            "pagado": ("enviado",),
+            "enviado": ("entregado",),
+            "entregado": (),
+            "cancelado": ()
+        }
+
+        if nuevo_estado not in transiciones.get(estado_actual, ()):
             raise ValueError(
-                "Este pedido ya fue procesado y no se puede modificar."
+                "No se permite cambiar el pedido de "
+                f"{estado_actual} a {nuevo_estado}."
             )
 
-        # ==========================================
-        # CONFIRMAR PEDIDO
-        # ==========================================
+        # ======================================
+        # CANCELAR Y DEVOLVER INVENTARIO
+        # ======================================
 
-        if nuevo_estado == "confirmado":
+        if nuevo_estado == "cancelado":
 
-            cursor.execute("""
-                UPDATE pedidos
-                SET estado = 'confirmado'
-                WHERE id_pedido = %s
-                AND estado = 'pendiente'
-            """, (id_pedido,))
-
-            if cursor.rowcount != 1:
-                raise ValueError("No se pudo confirmar el pedido.")
-
-            conexion.commit()
-
-            flash(
-                "Pedido confirmado correctamente. "
-                "Ahora está protegido contra modificaciones."
-            )
-
-        # ==========================================
-        # CANCELAR PEDIDO
-        # ==========================================
-
-        elif nuevo_estado == "cancelado":
-
-            # Recuperar los productos del pedido.
             cursor.execute("""
                 SELECT
                     dp.id_producto,
                     dp.cantidad,
-                    p.nombre,
                     p.existencia
                 FROM detalle_pedido AS dp
                 INNER JOIN productos AS p
@@ -3248,12 +3801,15 @@ def admin_actualizar_estado(id_pedido):
             productos = cursor.fetchall()
 
             if not productos:
-                raise ValueError("El pedido no contiene productos.")
+                raise ValueError(
+                    "El pedido no contiene productos disponibles "
+                    "para devolver al inventario."
+                )
 
-            # Devolver cada producto al inventario.
             for producto in productos:
 
                 existencia_anterior = producto["existencia"]
+
                 existencia_nueva = (
                     existencia_anterior + producto["cantidad"]
                 )
@@ -3267,7 +3823,6 @@ def admin_actualizar_estado(id_pedido):
                     producto["id_producto"]
                 ))
 
-                # Registrar la devolución en el historial.
                 cursor.execute("""
                     INSERT INTO historial_inventario (
                         id_producto,
@@ -3278,7 +3833,9 @@ def admin_actualizar_estado(id_pedido):
                         existencia_nueva,
                         motivo
                     )
-                    VALUES (%s, %s, 'entrada', %s, %s, %s, %s)
+                    VALUES (
+                        %s, %s, 'entrada', %s, %s, %s, %s
+                    )
                 """, (
                     producto["id_producto"],
                     session["usuario_id"],
@@ -3288,23 +3845,35 @@ def admin_actualizar_estado(id_pedido):
                     f"Devolución por cancelación del pedido #{id_pedido}"
                 ))
 
-            # Cambiar el estado del pedido.
-            cursor.execute("""
-                UPDATE pedidos
-                SET estado = 'cancelado'
-                WHERE id_pedido = %s
-                AND estado = 'pendiente'
-            """, (id_pedido,))
+        # ======================================
+        # ACTUALIZAR ESTADO
+        # ======================================
 
-            if cursor.rowcount != 1:
-                raise ValueError("No se pudo cancelar el pedido.")
+        cursor.execute("""
+            UPDATE pedidos
+            SET estado = %s
+            WHERE id_pedido = %s
+        """, (
+            nuevo_estado,
+            id_pedido
+        ))
 
-            conexion.commit()
+        if cursor.rowcount != 1:
+            raise ValueError("No se pudo actualizar el pedido.")
 
-            flash(
-                "Pedido cancelado correctamente. "
+        conexion.commit()
+
+        mensajes = {
+            "pagado": "Pedido confirmado como pagado.",
+            "enviado": "El pedido se marcó como enviado.",
+            "entregado": "El pedido se marcó como entregado.",
+            "cancelado": (
+                "Pedido cancelado. "
                 "Las existencias fueron devueltas al inventario."
             )
+        }
+
+        flash(mensajes[nuevo_estado])
 
     except ValueError as error:
 
@@ -3319,6 +3888,7 @@ def admin_actualizar_estado(id_pedido):
             conexion.rollback()
 
         print("ERROR AL ACTUALIZAR PEDIDO:", error)
+
         flash("No se pudo actualizar el pedido.")
 
     finally:
@@ -3332,9 +3902,6 @@ def admin_actualizar_estado(id_pedido):
     return redirect(
         url_for("admin_detalle_pedido", id_pedido=id_pedido)
     )
-
-
-
 
 
 @app.route("/chatbot", methods=["POST"])
