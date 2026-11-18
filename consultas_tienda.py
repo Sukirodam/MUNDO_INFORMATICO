@@ -1,6 +1,11 @@
 
 from db import obtener_conexion
+from decimal import Decimal
 
+
+# ==========================================
+# OBTENER INFORMACIÓN DE LA TIENDA
+# ==========================================
 
 def obtener_contexto_tienda():
 
@@ -8,6 +13,7 @@ def obtener_contexto_tienda():
     cursor = None
 
     try:
+
         conexion = obtener_conexion()
         cursor = conexion.cursor(dictionary=True)
 
@@ -31,27 +37,58 @@ def obtener_contexto_tienda():
         productos = cursor.fetchall()
 
         if not productos:
-            return "Actualmente no hay productos disponibles en el catálogo."
+            return (
+                "El catálogo de MUNDO INFORMÁTICO "
+                "no tiene productos activos actualmente."
+            )
 
-        contexto = "CATÁLOGO ACTUAL DE MUNDO INFORMÁTICO:\n"
+        lineas = [
+            "CATÁLOGO ACTUAL DE MUNDO INFORMÁTICO",
+            "Información obtenida directamente de MySQL.",
+            "Los precios están expresados en pesos mexicanos.",
+            ""
+        ]
 
         for producto in productos:
-            contexto += f"""
-            Producto: {producto['nombre']}
-            Categoría: {producto['categoria'] or 'Sin categoría'}
-            Descripción: {producto['descripcion'] or 'Sin descripción'}
-            Precio: ${producto['precio']} MXN
-            Existencias: {producto['existencia']}
-            -------------------------
-            """
 
-        return contexto
+            precio = Decimal(str(producto["precio"]))
+
+            existencia = int(producto["existencia"] or 0)
+
+            disponibilidad = (
+                "Disponible"
+                if existencia > 0
+                else "Agotado"
+            )
+
+            lineas.append(
+                f"""
+ID del producto: {producto['id_producto']}
+Nombre: {producto['nombre']}
+Categoría: {producto['categoria'] or 'Sin categoría'}
+Descripción: {producto['descripcion'] or 'Sin descripción'}
+Precio: ${precio:,.2f} MXN
+Existencias: {existencia}
+Disponibilidad: {disponibilidad}
+------------------------------
+"""
+            )
+
+        return "\n".join(lineas)
 
     except Exception as error:
-        print("Error al consultar el catálogo:", error)
-        return "No fue posible consultar el catálogo en este momento."
+
+        print(
+            "Error al consultar el catálogo:",
+            error
+        )
+
+        raise RuntimeError(
+            "No fue posible consultar el catálogo de la tienda."
+        ) from error
 
     finally:
+
         if cursor:
             cursor.close()
 

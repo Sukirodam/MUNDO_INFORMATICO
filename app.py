@@ -1,3 +1,5 @@
+from asistente_ia import generar_respuesta
+from consultas_tienda import obtener_contexto_tienda
 import traceback
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -3903,7 +3905,6 @@ def admin_actualizar_estado(id_pedido):
         url_for("admin_detalle_pedido", id_pedido=id_pedido)
     )
 
-
 @app.route("/chatbot", methods=["POST"])
 def chatbot():
 
@@ -3919,7 +3920,7 @@ def chatbot():
         # ==========================================
 
         def normalizar(texto):
-            texto = str(texto).lower()
+            texto = str(texto or "").lower()
             texto = unicodedata.normalize("NFD", texto)
 
             return "".join(
@@ -3947,23 +3948,388 @@ def chatbot():
         mensaje_normalizado = normalizar(mensaje)
 
         # ==========================================
-        # SALUDOS
+        # HISTORIAL DE CONVERSACIÓN
         # ==========================================
 
-        if any(palabra in mensaje_normalizado for palabra in [
-            "hola", "buenos dias", "buenas tardes",
-            "buenas noches", "saludos"
-        ]):
+        def obtener_historial():
+            historial = session.get("historial_chatbot", [])
+
+            if not isinstance(historial, list):
+                return []
+
+            return [
+                elemento for elemento in historial[-8:]
+                if isinstance(elemento, dict)
+                and elemento.get("role") in ("user", "assistant", "model")
+                and elemento.get("content")
+            ]
+
+        def guardar_interaccion(pregunta, respuesta):
+            historial = obtener_historial()
+
+            historial.append({
+                "role": "user",
+                "content": str(pregunta)[:500]
+            })
+
+            historial.append({
+                "role": "assistant",
+                "content": str(respuesta)[:1200]
+            })
+
+            session["historial_chatbot"] = historial[-8:]
+            session.modified = True
+
+        def responder_tienda(respuesta):
+            guardar_interaccion(mensaje, respuesta)
 
             return jsonify({
-                "respuesta": (
-                    "¡Hola! Bienvenido a MUNDO INFORMÁTICO. "
-                    "Puedo ayudarte a consultar productos, precios, "
-                    "existencias, especificaciones técnicas y "
-                    "recomendaciones de compra. "
-                    "¿Qué estás buscando?"
-                )
+                "respuesta": respuesta
             })
+
+        historial_actual = obtener_historial()
+
+        contexto_reciente = normalizar(
+            " ".join(
+                str(elemento.get("content", ""))
+                for elemento in historial_actual[-6:]
+            )
+        )
+
+        # ==========================================
+        # DETECTAR PREGUNTAS EDUCATIVAS
+        # ==========================================
+
+        frases_educativas = [
+            "que es",
+            "que son",
+            "para que sirve",
+            "para que se utiliza",
+            "como funciona",
+            "que significa",
+            "explicame",
+            "explica",
+            "diferencia entre",
+            "diferencias entre",
+            "diferencias hay entre",
+            "que diferencia hay entre",
+            "que diferencias hay entre",
+            "cual es la diferencia entre",
+            "cual es mas importante",
+            "cual de las dos es mas importante",
+            "cual de los dos es mas importante",
+            "cual importa mas",
+            "que es mejor para"
+        ]
+
+        conceptos_tecnologicos = [
+            "ram",
+            "memoria ram",
+            "almacenamiento",
+            "procesador",
+            "cpu",
+            "gpu",
+            "tarjeta grafica",
+            "ssd",
+            "hdd",
+            "disco duro",
+            "memoria",
+            "internet",
+            "programacion",
+            "python",
+            "inteligencia artificial",
+            "sistema operativo",
+            "windows",
+            "linux",
+            "hardware",
+            "software",
+            "placa madre",
+            "motherboard"
+        ]
+
+        es_pregunta_educativa = any(
+            frase in mensaje_normalizado
+            for frase in frases_educativas
+        )
+
+        menciona_concepto = any(
+            concepto in mensaje_normalizado
+            for concepto in conceptos_tecnologicos
+        )
+
+        # ==========================================
+        # DETECTAR SEGUIMIENTOS EDUCATIVOS
+        # ==========================================
+
+        habla_ram_almacenamiento = (
+            "ram" in contexto_reciente
+            and (
+                "almacenamiento" in contexto_reciente
+                or "disco duro" in contexto_reciente
+                or "ssd" in contexto_reciente
+            )
+        )
+
+        frases_seguimiento_educativo = [
+            "cual de las dos",
+            "cual de los dos",
+            "cual es mas importante",
+            "cual importa mas",
+            "y para jugar",
+            "y para videojuegos",
+            "y para gaming",
+            "cual me conviene",
+            "cual es mejor",
+            "y cual es mejor",
+            "cual deberia elegir",
+            "cual necesito mas"
+        ]
+
+        es_seguimiento_ram = (
+            habla_ram_almacenamiento
+            and any(
+                frase in mensaje_normalizado
+                for frase in frases_seguimiento_educativo
+            )
+        )
+
+        # Seguimientos de otros conceptos tecnológicos.
+        frases_seguimiento_general = [
+            "y cual es mejor",
+            "cual de los dos",
+            "cual de las dos",
+            "y para que sirve",
+            "y como funciona",
+            "cual es mas importante",
+            "cual importa mas",
+            "explicame mas",
+            "puedes explicarlo",
+            "puedes explicarlo mejor"
+        ]
+
+        contexto_conceptual = any(
+            concepto in contexto_reciente
+            for concepto in conceptos_tecnologicos
+        )
+
+        es_seguimiento_conceptual = (
+            contexto_conceptual
+            and any(
+                frase in mensaje_normalizado
+                for frase in frases_seguimiento_general
+            )
+        )
+
+        es_consulta_conceptual = (
+            (es_pregunta_educativa and menciona_concepto)
+            or es_seguimiento_ram
+            or es_seguimiento_conceptual
+        )
+
+        # ==========================================
+        # RESPONDER PRIMERO LAS PREGUNTAS EDUCATIVAS
+        # ==========================================
+
+        if es_consulta_conceptual:
+
+            try:
+                respuesta_ia = generar_respuesta(
+                    mensaje=mensaje,
+                    contexto_tienda="",
+                    historial=historial_actual
+                )
+
+                guardar_interaccion(
+                    mensaje,
+                    respuesta_ia
+                )
+
+                return jsonify({
+                    "respuesta": respuesta_ia
+                })
+
+            except Exception:
+
+                app.logger.exception(
+                    "Error al responder pregunta educativa con Gemini"
+                )
+
+                return jsonify({
+                    "respuesta": (
+                        "En este momento no puedo explicar "
+                        "ese concepto. Inténtalo nuevamente."
+                    )
+                }), 503
+
+        # ==========================================
+        # IDENTIFICAR CONSULTAS DE LA TIENDA
+        # ==========================================
+
+        palabras_tienda = [
+            "producto", "productos",
+            "catalogo", "tienda",
+            "precio", "precios",
+            "cuesta", "cuestan",
+            "comprar", "compra",
+            "existencia", "existencias",
+            "disponible", "disponibilidad",
+            "laptop", "laptops",
+            "computadora", "computadoras",
+            "pc gamer", "mini pc",
+            "monitor", "monitores",
+            "teclado", "teclados",
+            "mouse", "mouses",
+            "audifono", "audifonos",
+            "bocina", "bocinas",
+            "memoria ram", "memoria usb",
+            "disco duro",
+            "tarjeta grafica",
+            "procesador",
+            "ssd", "hdd",
+            "webcam", "adaptador",
+            "cable hdmi",
+            "fuente de poder",
+            "garantia"
+        ]
+
+        frases_tienda = [
+            "para estudiar",
+            "para la escuela",
+            "para programar",
+            "recomiendame una laptop",
+            "recomiendame una computadora",
+            "que puedo comprar",
+            "que tienen disponible",
+            "que productos tienen",
+            "cuanto cuesta",
+            "cuanto vale",
+            "dame opciones",
+            "busco una laptop",
+            "busco una computadora",
+            "compara",
+            "comparacion",
+            "vale la pena",
+            "ultima comparacion",
+            "de nuestra tienda",
+            "de la tienda",
+            "en nuestra tienda"
+        ]
+
+        es_consulta_tienda = (
+            any(
+                palabra in mensaje_normalizado
+                for palabra in palabras_tienda
+            )
+            or any(
+                frase in mensaje_normalizado
+                for frase in frases_tienda
+            )
+        )
+
+        # "Para jugar" por sí solo no debe convertir
+        # una pregunta educativa en consulta de productos.
+
+        menciona_producto = any(
+            palabra in mensaje_normalizado
+            for palabra in [
+                "laptop", "computadora", "pc",
+                "producto", "tienda", "catalogo"
+            ]
+        )
+
+        pide_recomendacion = any(
+            frase in mensaje_normalizado
+            for frase in [
+                "recomiendame",
+                "recomienda",
+                "que equipo",
+                "que laptop",
+                "que computadora",
+                "que producto"
+            ]
+        )
+
+        menciona_juegos = any(
+            frase in mensaje_normalizado
+            for frase in [
+                "para jugar",
+                "para gaming",
+                "para videojuegos",
+                "jugar videojuegos",
+                "juegos exigentes"
+            ]
+        )
+
+        if menciona_juegos and (
+            menciona_producto or pide_recomendacion
+        ):
+            es_consulta_tienda = True
+
+        # ==========================================
+        # DETECTAR CONTINUACIÓN DE COMPARACIONES
+        # ==========================================
+
+        frases_seguimiento_comparacion = [
+            "y cual es mejor",
+            "y cual conviene",
+            "y cual me conviene",
+            "y para jugar",
+            "y para estudiar",
+            "y para trabajar",
+            "y cual tiene mejor",
+            "y cual tiene mas",
+            "cual elegirias",
+            "cual elegir",
+            "cual me recomiendas",
+            "y el otro",
+            "y el primero",
+            "y el segundo"
+        ]
+
+        if (
+            session.get("ultima_comparacion")
+            and not es_seguimiento_conceptual
+            and any(
+                frase in mensaje_normalizado
+                for frase in frases_seguimiento_comparacion
+            )
+        ):
+            es_consulta_tienda = True
+
+        # ==========================================
+        # GEMINI COMO ASISTENTE GENERAL
+        # ==========================================
+
+        if not es_consulta_tienda:
+
+            try:
+                respuesta_ia = generar_respuesta(
+                    mensaje=mensaje,
+                    contexto_tienda="",
+                    historial=historial_actual
+                )
+
+                guardar_interaccion(
+                    mensaje,
+                    respuesta_ia
+                )
+
+                return jsonify({
+                    "respuesta": respuesta_ia
+                })
+
+            except Exception:
+
+                app.logger.exception(
+                    "Error al consultar Gemini para conversación general"
+                )
+
+                return jsonify({
+                    "respuesta": (
+                        "En este momento no puedo responder "
+                        "tu pregunta. Inténtalo nuevamente."
+                    )
+                }), 503
 
         # ==========================================
         # LIMPIAR PALABRAS
@@ -3981,7 +4347,8 @@ def chatbot():
             "dime", "tienes", "mas", "mejor", "cual",
             "cuales", "entre", "diferencia", "diferencias",
             "comparar", "compara", "comparacion", "es",
-            "son", "ser", "tiene", "tienen"
+            "son", "ser", "nuestra", "nuestro",
+            "tienda", "caracteristicas", "caracteristica"
         }
 
         palabras = re.findall(
@@ -4121,39 +4488,7 @@ def chatbot():
             ])
 
         # ==========================================
-        # DETECTAR CARACTERÍSTICA TÉCNICA
-        # ==========================================
-
-        criterio = None
-
-        if any(palabra in mensaje_normalizado for palabra in [
-            "procesador", "cpu"
-        ]):
-
-            criterio = "procesador"
-
-        elif any(palabra in mensaje_normalizado for palabra in [
-            "memoria ram", "ram"
-        ]):
-
-            criterio = "ram"
-
-        elif any(palabra in mensaje_normalizado for palabra in [
-            "tarjeta grafica", "grafica", "gpu"
-        ]):
-
-            criterio = "grafica"
-
-        elif "almacenamiento" in mensaje_normalizado:
-
-            criterio = "almacenamiento"
-
-        elif "pantalla" in mensaje_normalizado:
-
-            criterio = "pantalla"
-
-        # ==========================================
-        # DETECTAR INTENCIONES DE RECOMENDACIÓN
+        # DETECTAR INTENCIÓN DE JUEGOS EN EL CONTEXTO
         # ==========================================
 
         intenciones_recomendacion = {
@@ -4206,9 +4541,73 @@ def chatbot():
                 frase in mensaje_normalizado
                 for frase in frases
             ):
-
                 intencion = tipo
                 break
+
+        # Si el usuario pregunta por un producto "para eso",
+        # recuperar la intención de los mensajes recientes.
+
+        es_seguimiento_para_eso = any(
+            frase in mensaje_normalizado
+            for frase in [
+                "para eso",
+                "para ese uso",
+                "para lo mismo",
+                "para esa actividad",
+                "para esa tarea"
+            ]
+        )
+
+        if es_seguimiento_para_eso and not intencion:
+
+            if any(
+                frase in contexto_reciente
+                for frase in [
+                    "para jugar",
+                    "para videojuegos",
+                    "para gaming",
+                    "videojuegos",
+                    "juegos exigentes"
+                ]
+            ):
+                intencion = "juegos"
+
+            elif any(
+                frase in contexto_reciente
+                for frase in [
+                    "para estudiar",
+                    "para la escuela",
+                    "tareas escolares"
+                ]
+            ):
+                intencion = "estudio"
+
+        # ==========================================
+        # DETECTAR CARACTERÍSTICA TÉCNICA
+        # ==========================================
+
+        criterio = None
+
+        if any(palabra in mensaje_normalizado for palabra in [
+            "procesador", "cpu"
+        ]):
+            criterio = "procesador"
+
+        elif any(palabra in mensaje_normalizado for palabra in [
+            "memoria ram", "ram"
+        ]):
+            criterio = "ram"
+
+        elif any(palabra in mensaje_normalizado for palabra in [
+            "tarjeta grafica", "grafica", "gpu"
+        ]):
+            criterio = "grafica"
+
+        elif "almacenamiento" in mensaje_normalizado:
+            criterio = "almacenamiento"
+
+        elif "pantalla" in mensaje_normalizado:
+            criterio = "pantalla"
 
         # ==========================================
         # DETECTAR COMPARACIONES
@@ -4218,6 +4617,7 @@ def chatbot():
             "diferencia entre",
             "diferencias entre",
             "que diferencia hay entre",
+            "que diferencias hay entre",
             "cual es la diferencia entre",
             "comparar",
             "compara",
@@ -4241,13 +4641,92 @@ def chatbot():
             "cual tiene mejor"
         ]
 
-        es_comparacion = any(
+        es_comparacion_solicitada = any(
             frase in mensaje_normalizado
             for frase in frases_comparacion
         )
 
-        # Las recomendaciones también necesitan
-        # recuperar los productos comparados.
+        es_comparacion = es_comparacion_solicitada
+
+        # ==========================================
+        # RECOMENDACIÓN INDIVIDUAL PARA JUGAR
+        # ==========================================
+
+        if intencion == "juegos" and not es_comparacion_solicitada:
+
+            cursor.execute(
+                consulta_base + """
+                    AND LOWER(p.nombre) LIKE %s
+                    AND p.existencia > 0
+                """,
+                ("%laptop%",)
+            )
+
+            laptops = cursor.fetchall()
+
+            if laptops:
+
+                recomendado = max(
+                    laptops,
+                    key=lambda producto: (
+                        tiene_grafica_dedicada(producto),
+                        obtener_ram(producto),
+                        obtener_almacenamiento(producto)
+                    )
+                )
+
+                respuesta = (
+                    "RECOMENDACIÓN PARA JUGAR\n\n"
+                    f"Te recomiendo la {recomendado['nombre']}.\n\n"
+                    "Estas son sus características:\n"
+                    f"- Procesador: "
+                    f"{recomendado.get('procesador') or 'No especificado'}.\n"
+                    f"- Memoria RAM: "
+                    f"{recomendado.get('memoria_ram') or 'No especificada'}.\n"
+                    f"- Almacenamiento: "
+                    f"{recomendado.get('almacenamiento') or 'No especificado'}.\n"
+                    f"- Tarjeta gráfica: "
+                    f"{recomendado.get('tarjeta_grafica') or 'No especificada'}.\n"
+                    f"- Precio: "
+                    f"${float(recomendado['precio']):,.2f} MXN.\n"
+                    f"- Existencias: "
+                    f"{recomendado['existencia']} unidades.\n\n"
+                )
+
+                if tiene_grafica_dedicada(recomendado):
+
+                    respuesta += (
+                        "Su tarjeta gráfica dedicada es una "
+                        "ventaja importante para ejecutar "
+                        "videojuegos y aplicaciones exigentes.\n\n"
+                    )
+
+                else:
+
+                    respuesta += (
+                        "Este equipo es más adecuado para juegos "
+                        "ligeros y actividades cotidianas.\n\n"
+                    )
+
+                respuesta += (
+                    "Mi recomendación es elegir un equipo con "
+                    "una buena tarjeta gráfica y suficiente RAM "
+                    "para disfrutar de tus videojuegos."
+                )
+
+            else:
+
+                respuesta = (
+                    "Por el momento no encontré laptops disponibles "
+                    "para recomendarte. Puedes consultar nuevamente "
+                    "más adelante."
+                )
+
+            return responder_tienda(respuesta)
+
+        # ==========================================
+        # ACTIVAR COMPARACIÓN PARA OTRAS RECOMENDACIONES
+        # ==========================================
 
         if intencion:
             es_comparacion = True
@@ -4256,7 +4735,6 @@ def chatbot():
             "mejor", "mas", "mayor", "cual",
             "comparar", "compara", "diferencia"
         ]):
-
             es_comparacion = True
 
         # ==========================================
@@ -4278,9 +4756,6 @@ def chatbot():
                 nombre_normalizado = normalizar(
                     producto["nombre"]
                 )
-
-                # Evitar confundir características
-                # con nombres de productos.
 
                 if nombre_normalizado in [
                     "tarjeta grafica",
@@ -4318,8 +4793,6 @@ def chatbot():
                 for posicion, producto in productos_encontrados
             ]
 
-            # Evitar productos repetidos.
-
             productos_unicos = []
 
             for producto in productos_encontrados:
@@ -4328,7 +4801,6 @@ def chatbot():
                     existente["id_producto"] == producto["id_producto"]
                     for existente in productos_unicos
                 ):
-
                     productos_unicos.append(producto)
 
             productos_encontrados = productos_unicos
@@ -4357,8 +4829,6 @@ def chatbot():
 
                     productos_guardados = cursor.fetchall()
 
-                    # Mantener el orden original.
-
                     productos_guardados.sort(
                         key=lambda producto:
                         ultima_comparacion.index(
@@ -4367,7 +4837,6 @@ def chatbot():
                     )
 
                     if len(productos_guardados) == 2:
-
                         productos_encontrados = productos_guardados
 
             # ======================================
@@ -4393,12 +4862,10 @@ def chatbot():
                         "indícame los dos productos que deseas comparar."
                     )
 
-                return jsonify({"respuesta": respuesta})
+                return responder_tienda(respuesta)
 
             producto1 = productos_encontrados[0]
             producto2 = productos_encontrados[1]
-
-            # Guardar la comparación actual.
 
             session["ultima_comparacion"] = [
                 producto1["id_producto"],
@@ -4430,10 +4897,6 @@ def chatbot():
                 nombre1 = producto1["nombre"]
                 nombre2 = producto2["nombre"]
 
-                # ==================================
-                # RECOMENDACIÓN PARA JUGAR
-                # ==================================
-
                 if intencion == "juegos":
 
                     gpu1 = tiene_grafica_dedicada(producto1)
@@ -4460,30 +4923,39 @@ def chatbot():
                             recomendado = mas_caro
 
                     respuesta = (
+                        "COMPARACIÓN PARA VIDEOJUEGOS\n\n"
+                        f"1. {nombre1}\n"
+                        f"- Precio: ${precio1:,.2f} MXN.\n"
+                        f"- Procesador: "
+                        f"{producto1.get('procesador') or 'No especificado'}.\n"
+                        f"- RAM: "
+                        f"{producto1.get('memoria_ram') or 'No especificada'}.\n"
+                        f"- Tarjeta gráfica: "
+                        f"{producto1.get('tarjeta_grafica') or 'No especificada'}.\n\n"
+                        f"2. {nombre2}\n"
+                        f"- Precio: ${precio2:,.2f} MXN.\n"
+                        f"- Procesador: "
+                        f"{producto2.get('procesador') or 'No especificado'}.\n"
+                        f"- RAM: "
+                        f"{producto2.get('memoria_ram') or 'No especificada'}.\n"
+                        f"- Tarjeta gráfica: "
+                        f"{producto2.get('tarjeta_grafica') or 'No especificada'}.\n\n"
                         "RECOMENDACIÓN PARA JUGAR\n\n"
                         f"Mi recomendación es {recomendado['nombre']}.\n\n"
-                        "Estas son algunas de sus características:\n"
-                        f"- Procesador: "
-                        f"{recomendado.get('procesador') or 'No especificado'}.\n"
-                        f"- Memoria RAM: "
-                        f"{recomendado.get('memoria_ram') or 'No especificada'}.\n"
-                        f"- Tarjeta gráfica: "
-                        f"{recomendado.get('tarjeta_grafica') or 'No especificada'}.\n"
                     )
 
                     if tiene_grafica_dedicada(recomendado):
 
                         respuesta += (
-                            "\nSu tarjeta gráfica dedicada "
-                            "es una ventaja importante para "
-                            "ejecutar videojuegos y aplicaciones "
-                            "gráficas exigentes.\n"
+                            "Su tarjeta gráfica dedicada es una "
+                            "ventaja importante para ejecutar "
+                            "videojuegos y aplicaciones gráficas exigentes.\n"
                         )
 
                     else:
 
                         respuesta += (
-                            "\nEste equipo utiliza gráficos integrados, "
+                            "Este equipo utiliza gráficos integrados, "
                             "por lo que es más adecuado para juegos "
                             "ligeros y actividades cotidianas.\n"
                         )
@@ -4503,23 +4975,11 @@ def chatbot():
                             "está agotado actualmente."
                         )
 
-                        if mas_barato["existencia"] > 0:
-
-                            respuesta += (
-                                f"\nComo alternativa puedes "
-                                f"considerar {mas_barato['nombre']}, "
-                                "aunque su rendimiento puede ser menor."
-                            )
-
                     respuesta += (
                         "\n\nSi tu prioridad son los videojuegos, "
                         "te recomiendo elegir el equipo con mejor "
                         "tarjeta gráfica y suficiente memoria RAM."
                     )
-
-                # ==================================
-                # RECOMENDACIÓN PARA ESTUDIAR
-                # ==================================
 
                 elif intencion == "estudio":
 
@@ -4573,10 +5033,6 @@ def chatbot():
                         "que posiblemente no vas a utilizar."
                     )
 
-                # ==================================
-                # EXPLICAR DIFERENCIA DE PRECIO
-                # ==================================
-
                 elif intencion == "precio":
 
                     respuesta = (
@@ -4613,30 +5069,22 @@ def chatbot():
 
                     respuesta += (
                         "\nPor lo tanto, el precio superior puede "
-                        "justificarse por las características de "
+                        "explicarse por las características de "
                         "hardware que ofrece el producto más caro. "
                         "Sin embargo, eso no significa que siempre "
                         "sea la mejor compra para todos los usuarios."
                     )
-
-                # ==================================
-                # RENDIMIENTO GENERAL
-                # ==================================
 
                 elif intencion == "rendimiento":
 
                     puntos1 = 0
                     puntos2 = 0
 
-                    # Gráficos dedicados.
-
                     if tiene_grafica_dedicada(producto1):
                         puntos1 += 3
 
                     if tiene_grafica_dedicada(producto2):
                         puntos2 += 3
-
-                    # Memoria RAM.
 
                     ram1 = obtener_ram(producto1)
                     ram2 = obtener_ram(producto2)
@@ -4646,8 +5094,6 @@ def chatbot():
 
                     elif ram2 > ram1:
                         puntos2 += 2
-
-                    # Procesadores registrados.
 
                     cpu1 = normalizar(
                         producto1.get("procesador") or ""
@@ -4662,14 +5108,6 @@ def chatbot():
 
                     if "i5-12450h" in cpu2:
                         puntos2 += 2
-
-                    if "ryzen 5 5500u" in cpu1:
-                        puntos2 += 0
-
-                    if "ryzen 5 5500u" in cpu2:
-                        puntos1 += 0
-
-                    # Almacenamiento.
 
                     almacenamiento1 = obtener_almacenamiento(producto1)
                     almacenamiento2 = obtener_almacenamiento(producto2)
@@ -4714,10 +5152,6 @@ def chatbot():
                         "\n\nEsta evaluación es orientativa y no "
                         "representa una prueba de rendimiento real."
                     )
-
-                # ==================================
-                # ¿VALE LA PENA PAGAR MÁS?
-                # ==================================
 
                 elif intencion == "conveniencia":
 
@@ -4767,7 +5201,7 @@ def chatbot():
                             "está agotado actualmente."
                         )
 
-                return jsonify({"respuesta": respuesta})
+                return responder_tienda(respuesta)
 
             # ======================================
             # CONSTRUIR COMPARACIÓN GENERAL
@@ -4820,10 +5254,6 @@ def chatbot():
                     respuesta += "   Estado: Agotado\n"
 
                 respuesta += "\n"
-
-            # ======================================
-            # DIFERENCIA DE PRECIOS
-            # ======================================
 
             respuesta += (
                 "DIFERENCIA DE PRECIOS\n\n"
@@ -5090,7 +5520,7 @@ def chatbot():
                 "¿Te gustaría consultar alguno de estos productos?"
             )
 
-            return jsonify({"respuesta": respuesta})
+            return responder_tienda(respuesta)
 
         # ==========================================
         # INFORMACIÓN DETALLADA DE PRODUCTOS
@@ -5157,7 +5587,6 @@ def chatbot():
                 )
 
                 if re.search(patron, mensaje_normalizado):
-
                     productos_encontrados.append(producto)
 
             productos_encontrados.sort(
@@ -5235,7 +5664,7 @@ def chatbot():
                     "tal como aparece en nuestro catálogo."
                 )
 
-            return jsonify({"respuesta": respuesta})
+            return responder_tienda(respuesta)
 
         # ==========================================
         # DETECTAR PRESUPUESTO
@@ -5345,7 +5774,7 @@ def chatbot():
                     f"de ${presupuesto:,.2f} MXN."
                 )
 
-            return jsonify({"respuesta": respuesta})
+            return responder_tienda(respuesta)
 
         # ==========================================
         # BÚSQUEDA NORMAL
@@ -5375,12 +5804,65 @@ def chatbot():
                 ])
 
             consulta = consulta_base + """
-                AND (""" + " OR ".join(condiciones) + """)
+                AND (""" + " AND ".join(condiciones) + """)
+            """
+
+            # Evitar que una búsqueda específica de un tipo
+            # de producto devuelva accesorios relacionados.
+
+            tipos_producto = [
+                "monitor",
+                "laptop",
+                "computadora",
+                "teclado",
+                "mouse",
+                "audifono",
+                "bocina",
+                "webcam",
+                "adaptador",
+                "memoria usb"
+            ]
+
+            tipo_detectado = next(
+                (
+                    tipo for tipo in tipos_producto
+                    if tipo in mensaje_normalizado
+                ),
+                None
+            )
+
+            if tipo_detectado:
+
+                consulta += """
+                    AND (
+                        LOWER(p.nombre) LIKE %s
+                        OR LOWER(COALESCE(c.nombre, '')) LIKE %s
+                    )
+                """
+
+                parametros.extend([
+                    f"%{tipo_detectado}%",
+                    f"%{tipo_detectado}%"
+                ])
+
+            consulta += """
                 ORDER BY
+                    CASE
+                        WHEN LOWER(p.nombre) = %s THEN 1
+                        WHEN LOWER(p.nombre) LIKE %s THEN 2
+                        WHEN LOWER(COALESCE(c.nombre, '')) LIKE %s THEN 3
+                        ELSE 4
+                    END,
                     p.existencia DESC,
                     p.nombre ASC
                 LIMIT 5
             """
+
+            parametros.extend([
+                mensaje_normalizado,
+                f"%{mensaje_normalizado}%",
+                f"%{mensaje_normalizado}%"
+            ])
 
             cursor.execute(consulta, parametros)
 
@@ -5398,7 +5880,38 @@ def chatbot():
         productos = cursor.fetchall()
 
         # ==========================================
-        # PREPARAR RESPUESTA
+        # CONSULTAR GEMINI SI NO HAY RESULTADOS
+        # ==========================================
+
+        if not productos or not palabras:
+
+            try:
+
+                contexto_tienda = obtener_contexto_tienda()
+
+                respuesta_ia = generar_respuesta(
+                    mensaje=mensaje,
+                    contexto_tienda=contexto_tienda,
+                    historial=historial_actual
+                )
+
+                guardar_interaccion(
+                    mensaje,
+                    respuesta_ia
+                )
+
+                return jsonify({
+                    "respuesta": respuesta_ia
+                })
+
+            except Exception:
+
+                app.logger.exception(
+                    "Error al consultar Gemini con contexto de tienda"
+                )
+
+        # ==========================================
+        # PREPARAR RESPUESTA DEL CATÁLOGO
         # ==========================================
 
         if productos:
@@ -5445,7 +5958,7 @@ def chatbot():
                 "otro nombre o categoría."
             )
 
-        return jsonify({"respuesta": respuesta})
+        return responder_tienda(respuesta)
 
     except Exception:
 
@@ -5461,11 +5974,17 @@ def chatbot():
     finally:
 
         if cursor:
-            cursor.close()
+            try:
+                cursor.close()
+            except Exception:
+                pass
 
-        if conexion and conexion.is_connected():
-            conexion.close()
-
+        if conexion:
+            try:
+                if conexion.is_connected():
+                    conexion.close()
+            except Exception:
+                pass
 
 if __name__ == "__main__":
 
