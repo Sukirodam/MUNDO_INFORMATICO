@@ -1,3 +1,9 @@
+import smtplib
+import secrets
+import hashlib
+import hmac
+
+from email.message import EmailMessage
 from asistente_ia import generar_respuesta
 from consultas_tienda import obtener_contexto_tienda
 import traceback
@@ -60,7 +66,19 @@ if not app.secret_key:
     )
 
 csrf = CSRFProtect(app)
+# ==========================================
+# CONFIGURACIÓN DE CORREO ELECTRÓNICO
+# ==========================================
 
+MAIL_SERVER = "smtp.gmail.com"
+MAIL_PORT = 587
+
+MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", MAIL_USERNAME)
+
+if not MAIL_USERNAME or not MAIL_PASSWORD:
+    print("ADVERTENCIA: No están configuradas las credenciales de correo.")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
 
@@ -2617,7 +2635,51 @@ def vaciar_carrito():
 
     return redirect(url_for("ver_carrito"))
 
+# ==========================================
+# VERIFICACIÓN DE CORREO ELECTRÓNICO
+# ==========================================
 
+def generar_codigo_verificacion():
+
+    return str(secrets.randbelow(900000) + 100000)
+
+
+def calcular_hash_codigo(codigo):
+
+    return hashlib.sha256(
+        codigo.encode("utf-8")
+    ).hexdigest()
+
+
+def enviar_codigo_verificacion(correo, nombre, codigo):
+
+    mensaje = EmailMessage()
+
+    mensaje["Subject"] = "Verifica tu cuenta | MUNDO INFORMÁTICO"
+    mensaje["From"] = MAIL_DEFAULT_SENDER
+    mensaje["To"] = correo
+
+    mensaje.set_content(f"""
+Hola {nombre}:
+
+Gracias por registrarte en MUNDO INFORMÁTICO.
+
+Tu código de verificación es:
+
+{codigo}
+
+Este código tiene una vigencia de 15 minutos.
+
+Si no solicitaste esta cuenta, puedes ignorar este mensaje.
+
+MUNDO INFORMÁTICO
+""")
+
+    with smtplib.SMTP(MAIL_SERVER, MAIL_PORT, timeout=20) as servidor:
+
+        servidor.starttls()
+        servidor.login(MAIL_USERNAME, MAIL_PASSWORD)
+        servidor.send_message(mensaje)
 # ==========================================
 # REGISTRO DE CLIENTES
 # ==========================================
@@ -2668,22 +2730,64 @@ def registro():
                 flash("Este correo ya está registrado.")
                 return redirect(url_for("registro"))
 
+            codigo = generar_codigo_verificacion()
+            codigo_hash = calcular_hash_codigo(codigo)
+
             contrasena_segura = generate_password_hash(contrasena)
+
+            expiracion = datetime.now() + timedelta(minutes=15)
 
             cursor.execute("""
                 INSERT INTO usuarios
-                (nombre, correo, contrasena, perfil)
-                VALUES (%s, %s, %s, 'cliente')
-            """, (nombre, correo, contrasena_segura))
+                (
+                    nombre,
+                    correo,
+                    contrasena,
+                    perfil,
+                    correo_verificado,
+                    codigo_verificacion,
+                    expiracion_codigo
+                )
+                VALUES (%s, %s, %s, 'cliente', 0, %s, %s)
+            """, (
+                nombre,
+                correo,
+                contrasena_segura,
+                codigo_hash,
+                expiracion
+            ))
 
             conexion.commit()
 
+            try:
+                enviar_codigo_verificacion(
+                    correo,
+                    nombre,
+                    codigo
+                )
+
+            except Exception as error:
+
+                print("ERROR AL ENVIAR CÓDIGO:", error)
+
+                flash(
+                    "Tu cuenta quedó pendiente de verificación, "
+                    "pero no pudimos enviar el correo. "
+                    "Puedes solicitar otro código."
+                )
+
+                return redirect(
+                    url_for("verificar_correo", correo=correo)
+                )
+
             flash(
-                "Cuenta creada correctamente. "
-                "Ahora puedes iniciar sesión."
+                "Te enviamos un código de verificación. "
+                "Revisa tu correo electrónico."
             )
 
-            return redirect(url_for("login"))
+            return redirect(
+                url_for("verificar_correo", correo=correo)
+            )
 
         except Exception as error:
 
@@ -2691,6 +2795,7 @@ def registro():
                 conexion.rollback()
 
             print("ERROR EN REGISTRO:", error)
+
             flash("No se pudo crear la cuenta. Inténtalo nuevamente.")
 
         finally:
@@ -2702,7 +2807,267 @@ def registro():
                 conexion.close()
 
     return render_template("registro.html")
+# ==========================================
+# VERIFICAR CORREO ELECTRÓNICO
+# ==========================================
 
+@app.route("/verificar-correo", methods=["GET", "POST"])
+def verificar_correo():
+
+    correo = request.args.get("correo", "").strip().lower()
+
+    if request.method == "POST":
+
+        correo = request.form.get("correo", "").strip().lower()
+        codigo = request.form.get("codigo", "").strip()
+
+        if not correo or not codigo:
+            flash("Introduce tu correo y el código.")
+            return redirect(
+                url_for("verificar_correo", correo=correo)
+            )
+
+        if len(codigo) != 6 or not codigo.isdigit():
+            flash("El código debe contener exactamente 6 números.")
+            return redirect(
+                url_for("verificar_correo", correo=correo)
+            )
+
+        intentos = session.get("intentos_verificacion", {})
+
+        if intentos.get(correo, 0) >= 5:
+            flash(
+                "Has superado el límite de intentos. "
+                "Solicita un nuevo código."
+            )
+            return redirect(
+                url_for("verificar_correo", correo=correo)
+            )
+
+        conexion = None
+        cursor = None
+
+        try:
+            conexion = obtener_conexion()
+            cursor = conexion.cursor(dictionary=True)
+
+            cursor.execute("""
+                SELECT
+                    id_usuario,
+                    correo_verificado,
+                    codigo_verificacion,
+                    expiracion_codigo
+                FROM usuarios
+                WHERE correo = %s
+            """, (correo,))
+
+            usuario = cursor.fetchone()
+
+            if not usuario:
+                flash("No se encontró una cuenta con ese correo.")
+                return redirect(url_for("registro"))
+
+            if usuario["correo_verificado"]:
+                flash("Esta cuenta ya está verificada.")
+                return redirect(url_for("login"))
+
+            if (
+                not usuario["codigo_verificacion"]
+                or not usuario["expiracion_codigo"]
+            ):
+                flash("Solicita un nuevo código de verificación.")
+                return redirect(
+                    url_for("verificar_correo", correo=correo)
+                )
+
+            if datetime.now() > usuario["expiracion_codigo"]:
+                flash("El código ha expirado. Solicita uno nuevo.")
+                return redirect(
+                    url_for("verificar_correo", correo=correo)
+                )
+
+            codigo_hash = calcular_hash_codigo(codigo)
+
+            if not hmac.compare_digest(
+                usuario["codigo_verificacion"],
+                codigo_hash
+            ):
+
+                intentos[correo] = intentos.get(correo, 0) + 1
+                session["intentos_verificacion"] = intentos
+
+                restantes = 5 - intentos[correo]
+
+                flash(
+                    f"Código incorrecto. "
+                    f"Intentos restantes: {restantes}."
+                )
+
+                return redirect(
+                    url_for("verificar_correo", correo=correo)
+                )
+
+            cursor.execute("""
+                UPDATE usuarios
+                SET
+                    correo_verificado = 1,
+                    codigo_verificacion = NULL,
+                    expiracion_codigo = NULL
+                WHERE id_usuario = %s
+            """, (usuario["id_usuario"],))
+
+            conexion.commit()
+
+            intentos.pop(correo, None)
+            session["intentos_verificacion"] = intentos
+
+            flash(
+                "¡Correo verificado correctamente! "
+                "Ahora puedes iniciar sesión."
+            )
+
+            return redirect(url_for("login"))
+
+        except Exception as error:
+
+            if conexion is not None:
+                conexion.rollback()
+
+            print("ERROR EN VERIFICACIÓN:", error)
+
+            flash("No se pudo verificar el correo.")
+
+        finally:
+
+            if cursor is not None:
+                cursor.close()
+
+            if conexion is not None and conexion.is_connected():
+                conexion.close()
+
+    return render_template(
+        "verificar_correo.html",
+        correo=correo
+    )
+# ==========================================
+# REENVIAR CÓDIGO DE VERIFICACIÓN
+# ==========================================
+
+@app.route("/reenviar-codigo", methods=["POST"])
+def reenviar_codigo():
+
+    correo = request.form.get("correo", "").strip().lower()
+
+    if not correo:
+        flash("Introduce tu correo electrónico.")
+        return redirect(url_for("registro"))
+
+    ahora = datetime.now().timestamp()
+
+    solicitudes = session.get("reenvios_codigo", {})
+    historial = solicitudes.get(correo, [])
+
+    historial = [
+        tiempo for tiempo in historial
+        if ahora - tiempo < 3600
+    ]
+
+    if historial and ahora - historial[-1] < 60:
+        flash("Espera un minuto antes de solicitar otro código.")
+        return redirect(
+            url_for("verificar_correo", correo=correo)
+        )
+
+    if len(historial) >= 5:
+        flash(
+            "Has alcanzado el límite de 5 solicitudes por hora."
+        )
+        return redirect(
+            url_for("verificar_correo", correo=correo)
+        )
+
+    conexion = None
+    cursor = None
+
+    try:
+        conexion = obtener_conexion()
+        cursor = conexion.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT
+                id_usuario,
+                nombre,
+                correo_verificado
+            FROM usuarios
+            WHERE correo = %s
+        """, (correo,))
+
+        usuario = cursor.fetchone()
+
+        if not usuario:
+            flash("No se encontró una cuenta pendiente de verificación.")
+            return redirect(url_for("registro"))
+
+        if usuario["correo_verificado"]:
+            flash("Esta cuenta ya está verificada.")
+            return redirect(url_for("login"))
+
+        codigo = generar_codigo_verificacion()
+        codigo_hash = calcular_hash_codigo(codigo)
+
+        expiracion = datetime.now() + timedelta(minutes=15)
+
+        cursor.execute("""
+            UPDATE usuarios
+            SET
+                codigo_verificacion = %s,
+                expiracion_codigo = %s
+            WHERE id_usuario = %s
+        """, (
+            codigo_hash,
+            expiracion,
+            usuario["id_usuario"]
+        ))
+
+        conexion.commit()
+
+        enviar_codigo_verificacion(
+            usuario["correo"],
+            usuario["nombre"],
+            codigo
+        )
+
+        historial.append(ahora)
+        solicitudes[correo] = historial
+
+        session["reenvios_codigo"] = solicitudes
+
+        intentos = session.get("intentos_verificacion", {})
+        intentos.pop(correo, None)
+        session["intentos_verificacion"] = intentos
+
+        flash("Te enviamos un nuevo código de verificación.")
+
+    except Exception as error:
+
+        if conexion is not None:
+            conexion.rollback()
+
+        print("ERROR AL REENVIAR CÓDIGO:", error)
+
+        flash("No se pudo enviar el código. Inténtalo nuevamente.")
+
+    finally:
+
+        if cursor is not None:
+            cursor.close()
+
+        if conexion is not None and conexion.is_connected():
+            conexion.close()
+
+    return redirect(
+        url_for("verificar_correo", correo=correo)
+    )
 
 # ==========================================
 # INICIO DE SESIÓN
@@ -2743,30 +3108,34 @@ def login():
                     nombre,
                     correo,
                     contrasena,
-                    perfil
+                    perfil,
+                    correo_verificado
                 FROM usuarios
                 WHERE correo = %s
             """, (correo,))
 
             usuario = cursor.fetchone()
-            if usuario:
-                print("DEBUG LOGIN:")
-                print("Correo encontrado:", usuario["correo"])
-                print("Longitud del hash:", len(usuario["contrasena"]))
-                print(
-        "Contraseña coincide:",
-        check_password_hash(
-            usuario["contrasena"],
-            contrasena
-        )
-    )
-            else:
-                print(": correo no encontrado")
+
             if usuario and check_password_hash(
                 usuario["contrasena"],
                 contrasena
             ):
 
+                # Comprobar que el correo esté verificado
+                if not usuario["correo_verificado"]:
+
+                    flash(
+                        "Primero debes verificar tu correo electrónico."
+                    )
+
+                    return redirect(
+                        url_for(
+                            "verificar_correo",
+                            correo=usuario["correo"]
+                        )
+                    )
+
+                # Conservar el carrito antes de crear la sesión
                 carrito = session.get("carrito", {})
 
                 session.clear()
@@ -2778,6 +3147,7 @@ def login():
 
                 flash("Bienvenido, " + usuario["nombre"] + ".")
 
+                # Redirección según el perfil
                 if usuario["perfil"] == "administrador":
                     return redirect(url_for("admin"))
 
@@ -2802,7 +3172,6 @@ def login():
                 conexion.close()
 
     return render_template("login.html")
-
 
 # ==========================================
 # CERRAR SESIÓN
